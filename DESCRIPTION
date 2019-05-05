@@ -1,0 +1,11 @@
+Package: rhlra
+Type: Package
+Title: Hankel Low-Rank Approximation for R
+Version: 0.0.1
+Author: Nikita Zvonarev
+Maintainer: Nikita Zvonarev <nikitazvonarev@gmail.com>
+Description: Modified Gauss-Newthon and Cadzow method implementation
+    for Hankel Low-Rank Approximation problem.
+License: GNU GPL Version 3
+Encoding: UTF-8
+LazyData: true
