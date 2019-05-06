@@ -17,7 +17,7 @@ default_L <- function(series) {
 
 certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
                                  alpha = 0.1, randomsearch = FALSE, debug = FALSE,
-                                 envelope = unit_envelope(series), compensated = TRUE, ...) {
+                                 envelope = unit_envelope(series), compensated = TRUE, set_seed = NULL, ...) {
 
     obj <- list()
 
@@ -35,7 +35,7 @@ certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
         right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
 
         if (any(is.na(series))) {
-            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug)
+            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed)
         }
         classes <- c(classes, "1d")
     } else {
@@ -45,7 +45,7 @@ certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
 
         for (i in seq_along(series)) {
             if (any(is.na(series[[i]]))) {
-                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug)
+                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed)
             }
         }
         classes <- c(classes, "1dm")
@@ -55,7 +55,8 @@ certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
 
     signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs,
                                  right_diag, debug = debug, envelope = envelope,
-                                 series_for_cadzow = series_for_cadzow, ...)
+                                 series_for_cadzow = series_for_cadzow,
+                                 set_seed = set_seed, ...)
 
     if (!is.list(series)) {
         N <- length(as.numeric(signal_obj$signal))
@@ -76,14 +77,15 @@ certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
 white_noise_optimize <- function(series, L = default_L(series), r,
                                  alpha = 0.1, randomsearch = FALSE, debug = FALSE,
                                  envelope = unit_envelope(series),
-                                 compensated = TRUE, ...) {
+                                 compensated = TRUE, set_seed = NULL, ...) {
     if (!is.list(series)) {
         coefs <- numeric(0)
     } else {
         coefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
     }
     certain_noise_optimize(series, L, r, coefs, alpha, randomsearch, debug,
-                                  envelope = envelope, ...)
+                                  envelope = envelope,
+                                  set_seed = set_seed, ...)
 }
 
 arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
@@ -91,11 +93,12 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
                                initial_coefs = NULL,
                                randomsearch = FALSE, debug = FALSE,
                                envelope = unit_envelope(series), 
-                               compensated = TRUE, ...) {
+                               compensated = TRUE, set_seed = NULL, ...) {
 
     if (p == 0) {
         return(white_noise_optimize(series, L, r, alpha, debug = debug,
-                                    envelope = envelope, compensated = compensated, ...))
+                                    envelope = envelope, compensated = compensated,
+                                    set_seed = set_seed, ...))
     }
 
     obj <- list()
@@ -114,7 +117,7 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
         right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
         K <- length(series) - L + 1
         if (any(is.na(series))) {
-            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug)
+            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed)
         }
         classes <- c(classes, "1d")
     } else {
@@ -124,7 +127,7 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
         Ks <- sapply(series, function(series) length(as.numeric(series))) - L + 1
         for (i in seq_along(series)) {
             if (any(is.na(series[[i]]))) {
-                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug)
+                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed)
             }
         }
         classes <- c(classes, "1dm")
@@ -135,7 +138,7 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
     if (!is.list(series)) {
         estimate_coefs <- function(x) {
             answer <- numeric(p)
-            tryCatch({
+            tryCatch({  
                 aobj <- ar(x/envelope, order.max = p,
                            na.action = na.pass)
                 if (length(aobj$ar) > 0) answer[1:length(aobj$ar)] <- aobj$ar
@@ -175,7 +178,8 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
 
         signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs = whitecoefs,
                                      right_diag = pseudord, epsilon = 1, use_mgn = FALSE, debug = debug,
-                                     envelope = envelope, series_for_cadzow = series_for_cadzow, ...)
+                                     envelope = envelope, series_for_cadzow = series_for_cadzow,
+                                     set_seed = set_seed, ...)
 
         noise <- signal_obj$noise
         coefs <- estimate_coefs(noise)
@@ -193,7 +197,8 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
         if (debug) cat(sprintf("%d EM iteration\n", i))
 
         signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs, right_diag, debug = debug,
-                                     envelope = envelope, series_for_cadzow = series_for_cadzow, ...)
+                                     envelope = envelope, series_for_cadzow = series_for_cadzow,
+                                     set_seed = set_seed, ...)
 
         noise <- signal_obj$noise
         coefs_old <- coefs
@@ -229,14 +234,16 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
 
 make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
                              r_range = 1:15, p_range = 0:3,
-                          envelope = unit_envelope(series)) {
+                          envelope = unit_envelope(series), set_seed = NULL, 
+                          cores = 4, initial_coefs = NULL) {
 
     obtain_bic_df_nonv <- function(v) {
         r <- v[1]
         p <- v[2]
         cat(sprintf("Try model: r = %d, p = %d\n", r, p))
         opt_obj <- arbitrary_noise_optimize(series, L, r, p, alpha,
-                                            envelope = envelope)
+                                            envelope = envelope, set_seed = set_seed,
+                                            initial_coefs = initial_coefs)
         bic <- opt_obj$bic
         df <- opt_obj$df
         loglikelihood <- opt_obj$loglikelihood
@@ -247,7 +254,7 @@ make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
     p_all <- rep(p_range, length(r_range))
     r_all <- rep(r_range, each = length(p_range))
 
-    cl <- makeCluster(getOption("cl.cores", 4))
+    cl <- makeCluster(getOption("cl.cores", cores))
     clusterCall(cl, function() library(svd))
     clusterCall(cl, function() library(fftw))
     clusterCall(cl, function() library(Rssa))
@@ -258,8 +265,8 @@ make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
     input_mat <- cbind(r_all, p_all)
     input_mat <- input_mat[sample(length(r_range) * length(p_range)), ]
 
-    data <- apply(input_mat, 1, obtain_bic_df_nonv)
-    # data <- parApply(cl, input_mat, 1, obtain_bic_df_nonv)
+    # data <- apply(input_mat, 1, obtain_bic_df_nonv)
+    data <- parApply(cl, input_mat, 1, obtain_bic_df_nonv)
     
     stopCluster(cl)
 

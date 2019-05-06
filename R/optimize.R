@@ -1,6 +1,10 @@
 my_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4, 
                         error_bound = 1e-2, 
-                        it_limit = 100, debug = TRUE) {
+                        it_limit = 100, debug = TRUE, set_seed = NULL) {
+    if (!is.null(set_seed)) {
+        set_seed()
+    }
+
     mask <- is.na(series)
     mask <- (1:length(series))[mask]
     
@@ -845,11 +849,11 @@ unit_envelope <- function(series, bignumber = 1e6) {
     }
 }
 
-fill_gaps <- function(series, r, debug = FALSE) {
+fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL) {
     result <- series
     if (any(is.na(series))) {
         if (debug) cat("fillgaps... ")
-        result <- my_igapfill(series, r)
+        result <- my_igapfill(series, r, set_seed = set_seed)
         if (debug) cat("done\n")
     }
     result
@@ -979,8 +983,12 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             right_diag, series_for_cadzow = NULL,
                             epsilon = 1e-6, use_mgn = TRUE,
                             it_limit = 100, debug = FALSE,
-                            envelope = unit_envelope(this, series), ...) {
+                            envelope = unit_envelope(this, series), set_seed = NULL, ...) {
     series_for_mgn <- series
+
+    if (!is.null(set_seed)) {
+        set_seed()
+    }
 
     list2env(prepare_cadzow_with_mgn(this, series, L, r, coefs,
                             right_diag, series_for_cadzow, envelope), environment())
