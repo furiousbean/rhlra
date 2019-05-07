@@ -248,13 +248,44 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
         ops_for_hankel$L, ops_for_hankel$K)
     result <- NULL
 
-    if (svd_type == "propack") {
-        result <- propack.svd(mymat, r)
-    } else {
-        result <- trlan.svd(mymat, r)
-        V <- sapply(1:r, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
-        result$v <- V
+    lapack_svd <- function() {
+        mymat <- sapply(1:ops_for_hankel$K, function(i) {
+                uv <- numeric(ops_for_hankel$K)
+                uv[i] <- 1
+                ops_for_hankel$mul(uv)
+                })
+        result <- svd(mymat, nu = r, nv = r)
+        result$d <- result$d[1:r]
+        result
     }
+
+    tryCatch({
+        if (svd_type == "svd") {
+            result <<- lapack_svd()
+        } else {
+            if (svd_type == "propack") {
+                result <- propack.svd(mymat, r)
+            } else {
+                result <- trlan.svd(mymat, r)
+                V <- sapply(1:r, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
+                result$v <- V
+            }
+        }
+    }, error = function(msg) {
+        if (grepl('Please use LAPACK or EISPACK instead.', msg, fixed=TRUE)) {
+            cat(paste0("Fallback to SVD due to ", msg, "\n"))
+            result <<- lapack_svd()
+        } else {
+            stop(msg)
+        }
+    }, warning = function(msg) {
+        if (grepl('TRLAN: info->ned (1) is large relative to the matrix dimension', msg, fixed=TRUE)) {
+            cat(paste0("Fallback to SVD due to ", msg, "\n"))
+            result <<- lapack_svd()
+        } else {
+            warning(msg)
+        }        
+    })
 
     list(N = ops_for_hankel$N, L = ops_for_hankel$L, 
         d = result$d, u = result$u, v = result$v, r = r)
@@ -439,7 +470,6 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         if (length(dists) > 1) {
             plot(dists, type = "b", log = "y",
                  main = "Relative residual eigenvalues")
-            cat(sprintf("Max gamma: %f\n", max(Mod(gammas), na.rm = TRUE)))
         }
     }
 
