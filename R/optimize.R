@@ -1,3 +1,20 @@
+simple_expm <- function(m, pow) {
+    if (pow == 0) {
+        return(diag(dim(m)[1]))
+    }
+
+    if (pow == 1) {
+        return(m)
+    }
+
+    x <- Recall(m, pow %/% 2)
+    if (pow %% 2 == 1) {
+        return(x %*% x %*% m)
+    } else {
+        return(x %*% x)
+    }
+}
+
 my_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4, 
                         error_bound = 1e-2, 
                         it_limit = 100, debug = TRUE, set_seed = NULL) {
@@ -72,7 +89,7 @@ my_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
                     }
                 }
                 # print(n)
-                v <- solve((stepmat - diag(scheme_order)), (stepmat%^%(n+1) - diag(scheme_order)))
+                v <- solve((stepmat - diag(scheme_order)), (simple_expm(stepmat, n + 1) - diag(scheme_order)))
                 v <- (last_steps[, -1] %*% v)[, scheme_order]
                 x <- prev + v
                 last_steps <- matrix(numeric(0), nrow = length(mask))
@@ -448,7 +465,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                     }
                 }
 
-                v <- solve((stepmat - diag(scheme_order)), (stepmat%^%(n+1) - diag(scheme_order)))
+                v <- solve((stepmat - diag(scheme_order)), (simple_expm(stepmat, n + 1) - diag(scheme_order)))
                 v <- (last_steps[, -1] %*% v)[, scheme_order]
 
                 last_steps <- empty_last_steps

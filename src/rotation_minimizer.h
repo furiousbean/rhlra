@@ -64,11 +64,11 @@ template <class Td = double> void rotate_vector(std::complex<Td>* input, int N, 
 }
 
 template <int horner_scheme> int getSearchIt() {
-    return 30;
+    return 15;
 }
 
 template <> int getSearchIt<COMPENSATED_HORNER>() {
-    return 50;
+    return 20;
 }
 
 template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
@@ -138,9 +138,9 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
             rc = 2 * M_PI / N;
             int min_flag = 1;
 
-            for (int i = 0; i < SEARCH_IT; i++) {
-                cur_alpha = conv_min_alpha_int(lc + i * (rc - lc) / SEARCH_IT,
-                    lc + (i + 1) * (rc - lc) / SEARCH_IT);
+            for (int i = 0; i < SEARCH_INT; i++) {
+                cur_alpha = conv_min_alpha_int(lc + i * (rc - lc) / SEARCH_INT,
+                    lc + (i + 1) * (rc - lc) / SEARCH_INT);
 
                 //HACK!!!
                 //cur_alpha = M_PI / N;

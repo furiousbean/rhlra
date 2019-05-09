@@ -5,7 +5,5 @@ import(Rssa)
 import(fftw)
 import(Matrix)
 import(snow)
-import(expm)
-
 
 exportPattern("^[[:alpha:]]+")

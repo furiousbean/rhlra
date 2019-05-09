@@ -32,7 +32,7 @@ p <- 3
 
 
 answer <- arbitrary_noise_optimize(series, r = r, p = p, alpha = alpha,
-                                   initial_coefs = c(.9), set_seed = seedf, debug = T)
+                                   initial_coefs = c(.9), set_seed = seedf, compensated = F)
 
 # answer <- arbitrary_noise_optimize(series, r = r, p = p, alpha = .3, debug = TRUE,
 #                                    initial_coefs = c(.9))
