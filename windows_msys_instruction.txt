@@ -1,0 +1,4 @@
+./configure --enable-static --disable-shared CC=/C/Rtools/mingw_64/bin/gcc.exe
+make
+mkdir testinstall
+make install DESTDIR=/C/Rtools/fftw-3.3.8/testinstall
