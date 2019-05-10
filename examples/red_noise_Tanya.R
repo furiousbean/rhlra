@@ -14,7 +14,7 @@ series <- series[!is.na(series)]
 r = 14
 # r = 12
 p = 3
-answer <- arbitrary_noise_optimize(series, r = r, p = p, debug = TRUE)
+answer <- arbitrary_noise_optimize(series, r = r, p = p)
 plot(as.numeric(series), type = "l")
 lines(answer$signal, col = "red")
 plot(answer$noise, main = "noise", type = "l")

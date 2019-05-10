@@ -256,10 +256,8 @@ make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
 
     cl <- makeCluster(getOption("cl.cores", cores))
     clusterCall(cl, function() library(svd))
-    clusterCall(cl, function() library(fftw))
     clusterCall(cl, function() library(Rssa))
     clusterCall(cl, function() library(Matrix))
-    clusterCall(cl, function() library(quadprog))
     clusterExport(cl, ls(envir = globalenv()))
 
     input_mat <- cbind(r_all, p_all)

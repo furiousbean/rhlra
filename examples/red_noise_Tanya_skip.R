@@ -18,7 +18,7 @@ p = 3
 # answer <- certain_noise_optimize(series, r = r,
                                  # coefs = c(0.60983015, 0.08978667, 0.17555034), debug = TRUE)
 
-answer <- arbitrary_noise_optimize(series, r = r, p = 3, debug = TRUE)
+answer <- arbitrary_noise_optimize(series, r = r, p = 3)
 
 
 matplot(1:length(answer$signal),

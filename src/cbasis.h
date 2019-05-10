@@ -7,8 +7,4 @@
 #include <R.h>
 #include <Rinternals.h>
 
-
-//SEXP revalzaC(SEXP Nexp, SEXP GLRRexp);
-//SEXP revalza2C(SEXP Nexp, SEXP GLRRexp);
-
 #endif

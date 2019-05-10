@@ -218,8 +218,7 @@ prepare_ops_for_hankel_svd.1d <- function(this, series, left_chol_mat, right_cho
     N <- length(series)
     L <- dim(left_chol_mat)[1]
     K <- dim(right_chol_mat)[1]
-    p <- planFFT(N)
-    series_fft <- FFT(series, plan = p)
+    series_fft <- hlra_fft(series)
 
     mul <- function(v) generic_mul(v, left_chol_mat = left_chol_mat,
                                    right_chol_mat = right_chol_mat, series_fft = series_fft)
@@ -234,10 +233,9 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
     Ks <- sapply(right_chol_mat, function(right_chol_mat) dim(right_chol_mat)[1])
     Ksplits <- get_splits(sapply_ns(Ks, numeric))
     K <- sum(Ks)
-    ps <- sapply(N, planFFT)
 
     series_ffts <- sapply_ns(seq_along(series),
-                          function(i) FFT(series[[i]], plan = ps[[i]]))
+                          function(i) hlra_fft(series[[i]]))
     mul <- function(v) {
         vs <- split_into_series_list(v, Ksplits)
         result <- rowSums(matrix(sapply(seq_along(series), function(i) {
@@ -309,10 +307,9 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
 }
 
 ssa_convolve <- function(u, v) {
-    p <- planFFT(length(u) + length(v) - 1)
-    l_fft <- FFT(c(u, numeric(length(v) - 1)), plan = p)
-    r_fft <- FFT(c(v, numeric(length(u) - 1)), plan = p)
-    Re(IFFT(l_fft * r_fft, plan = p))
+    l_fft <- hlra_fft(c(u, numeric(length(v) - 1)))
+    r_fft <- hlra_fft(c(v, numeric(length(u) - 1)))
+    Re(hlra_ifft(l_fft * r_fft))
 }
 
 prepare_diag_one_triple <- function(obj, ...) UseMethod("prepare_diag_one_triple")

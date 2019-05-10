@@ -110,7 +110,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
             rc = li + (ri - li) * M_PHI;
             lval = conv_eval_alpha(lc);
             rval = conv_eval_alpha(rc);
-            double answer;
+            double answer = 0;
             for (i = 0; i < SEARCH_IT; i++) {
                 if (lval < rval) {
                     ri = rc;

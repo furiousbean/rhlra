@@ -90,3 +90,11 @@ generic_diag_one_triple <- function(u, v, left_chol_mat,
                         right_chol_mat) {
     .Call("generic_diag_one_tripleC", u, v, left_chol_mat, right_chol_mat, PACKAGE = "rhlra")
 }
+
+hlra_fft <- function(series) {
+    .Call("hlra_fftC", as.complex(series), PACKAGE = "rhlra")
+}
+
+hlra_ifft <- function(series) {
+    .Call("hlra_ifftC", as.complex(series), PACKAGE = "rhlra")
+}
