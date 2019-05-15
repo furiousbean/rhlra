@@ -1,5 +1,5 @@
 
-residuals <- function(noise, coefs) {
+hlra_residuals <- function(noise, coefs) {
     norm_mat <- band_mat_from_diags(inv_ac_diags(length(noise), coefs))
     left_chol <- Cholesky(norm_mat, perm = FALSE, LDL = FALSE)
     as.numeric(as(left_chol, "Matrix") %*% noise)
@@ -168,18 +168,7 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
 
 
     if (is.null(initial_coefs)) {
-        if (!is.list(series)) {
-            pseudord <- rep(1, K)
-            whitecoefs <- numeric(0)
-        } else {
-            pseudord <- sapply(Ks, function(i) rep(1, i), simplify = FALSE)
-            whitecoefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
-        }
-
-        signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs = whitecoefs,
-                                     right_diag = pseudord, epsilon = 1, use_mgn = FALSE, debug = debug,
-                                     envelope = envelope, series_for_cadzow = series_for_cadzow,
-                                     set_seed = set_seed, ...)
+        signal_obj <- hlra_ssa(obj, series_for_cadzow, L, r, debug, set_seed)
 
         noise <- signal_obj$noise
         coefs <- estimate_coefs(noise)

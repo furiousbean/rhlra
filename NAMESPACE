@@ -1,7 +1,6 @@
 useDynLib(rhlra)
 
 import(svd)
-import(Rssa)
 import(Matrix)
 import(snow)
 

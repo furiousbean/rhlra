@@ -1,4 +1,11 @@
+64 bit:
 ./configure --enable-static --disable-shared CC=/C/Rtools/mingw_64/bin/gcc.exe
+make
+mkdir testinstall
+make install DESTDIR=/C/Rtools/fftw-3.3.8/testinstall
+
+32 bit:
+./configure --enable-static --disable-shared CC=/C/Rtools/mingw_32/bin/gcc.exe
 make
 mkdir testinstall
 make install DESTDIR=/C/Rtools/fftw-3.3.8/testinstall

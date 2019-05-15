@@ -14,7 +14,7 @@ series <- series[!is.na(series)]
 
 #best model chosen
 r <- 15
-answer <- white_noise_optimize(series, r = r, debug = T)
+answer <- white_noise_optimize(series, r = r)
 plot(as.numeric(series), type = "l")
 lines(answer$signal, col = "red")
 plot(answer$noise, main = "noise", type = "l")

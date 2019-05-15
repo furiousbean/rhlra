@@ -15,7 +15,7 @@ simple_expm <- function(m, pow) {
     }
 }
 
-my_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4, 
+hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4, 
                         error_bound = 1e-2, 
                         it_limit = 100, debug = TRUE, set_seed = NULL) {
     if (!is.null(set_seed)) {
@@ -47,7 +47,11 @@ my_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
     while (it < it_limit && (is.na(prev) || sum(abs(prev - x)) > eps)) {
         # print(it)
         # print(series)
-        series <- reconstruct(ssa(series), groups = list(1:r))[[1]]
+        pseudoobj <- list()
+        class(pseudoobj) <- "1d"
+        L <- default_L(series)
+
+        series <- hlra_ssa(pseudoobj, series, L, r, debug, set_seed)$signal
         # print(series)
         prev <- x
         x <- series[mask]
@@ -897,7 +901,7 @@ fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL) {
     result <- series
     if (any(is.na(series))) {
         if (debug) cat("fillgaps... ")
-        result <- my_igapfill(series, r, set_seed = set_seed)
+        result <- hlra_igapfill(series, r, set_seed = set_seed, debug = debug)
         if (debug) cat("done\n")
     }
     result
@@ -1061,4 +1065,28 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
     }
 
     answer
+}
+
+prepare_hlra_ssa <- function(obj, ...) UseMethod("prepare_hlra_ssa")
+
+prepare_hlra_ssa.1d <- function(obj, series, L) {
+    K <- length(series) - L + 1
+    list(pseudord = rep(1, K), whitecoefs = numeric(0), 
+        pseudoenvelope = rep(1, length(series)))
+}
+
+prepare_hlra_ssa.1dm <- function(obj, series, L) {
+    Ks <- sapply(series, function(series) length(as.numeric(series))) - L + 1
+    list(pseudord = sapply(Ks, function(i) rep(1, i), simplify = FALSE), 
+        whitecoefs = sapply(seq_along(series), function(i) numeric(0), simplify = FALSE),
+        pseudoenvelope = sapply(series, function(i) rep(1, i), simplify = FALSE))
+}
+
+hlra_ssa <- function(obj, series, L, r, debug, set_seed, ...) {
+    prepare_list <- prepare_hlra_ssa(obj, series, L)
+
+    cadzow_with_mgn(obj, series, L, r, coefs = prepare_list$whitecoefs,
+        right_diag = prepare_list$pseudord, epsilon = 1, use_mgn = FALSE, debug = debug,
+        envelope = prepare_list$pseudoenvelope, series_for_cadzow = series,
+        set_seed = set_seed, ...)
 }
