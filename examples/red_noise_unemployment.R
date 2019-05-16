@@ -1,6 +1,6 @@
 library(Rssa)
 library(rhlra)
-library(normwhn.test)
+library(snow)
 data("USUnemployment")
 series <- USUnemployment[, 2]
 series <- series[!is.na(series)]
@@ -15,9 +15,14 @@ alpha <- .8
 
 envelope <- reconstruct(ssa(series, L = 80), groups = list(1:1))[[1]]
 
+cl <- makeCluster(getOption("cl.cores", 8))
+
 bic_data <- make_bic_data(series, r_range = 1:16, p_range = 0:3,
-                          alpha = alpha, cores = 8,
+                          alpha = alpha, cluster = cl,
                           initial_coefs = c(.9), set_seed = seedf)
+
+stopCluster(cl)
+
 plot_bic_data(bic_data)
 plot_bic_data(bic_data[bic_data$p > 0, ])
 stop()

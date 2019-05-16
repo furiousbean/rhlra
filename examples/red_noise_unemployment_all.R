@@ -1,6 +1,6 @@
 library(Rssa)
 library(rhlra)
-library(normwhn.test)
+library(snow)
 data("USUnemployment")
 series <- list(M_TEEN = USUnemployment[, 1], F_TEEN = USUnemployment[, 3])
 
@@ -13,9 +13,14 @@ alpha = .8
 #alpha = 0.5 for r = 12-13
 #alpha = 0.8 for r = 14
 
+cl <- makeCluster(getOption("cl.cores", 8))
+
 bic_data <- make_bic_data(series, r_range = 1:16, p_range = 0:3,
-                          alpha = alpha, cores = 8,
+                          alpha = alpha, cluster = cl,
                           initial_coefs = list(c(.9), c(.9)))
+
+stopCluster(cl)
+
 plot_bic_data(bic_data)
 plot_bic_data(bic_data[bic_data$p > 0, ])
 

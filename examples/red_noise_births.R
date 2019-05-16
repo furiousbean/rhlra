@@ -1,3 +1,5 @@
+library(rhlra)
+
 data <- read.table("births3.ctu", sep = ",")
 series <- as.numeric(data$V1)
 

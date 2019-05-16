@@ -224,7 +224,7 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
 make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
                              r_range = 1:15, p_range = 0:3,
                           envelope = unit_envelope(series), set_seed = NULL, 
-                          cores = 4, initial_coefs = NULL) {
+                          cluster = NULL, initial_coefs = NULL) {
 
     obtain_bic_df_nonv <- function(v) {
         r <- v[1]
@@ -239,23 +239,28 @@ make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
         c(bic, df, loglikelihood, r, p)
     }
 
-    # obtain_bic_df <- Vectorize(obtain_bic_df_nonv)
     p_all <- rep(p_range, length(r_range))
     r_all <- rep(r_range, each = length(p_range))
-
-    cl <- makeCluster(getOption("cl.cores", cores))
-    clusterCall(cl, function() library(svd))
-    clusterCall(cl, function() library(Rssa))
-    clusterCall(cl, function() library(Matrix))
-    clusterExport(cl, ls(envir = globalenv()))
 
     input_mat <- cbind(r_all, p_all)
     input_mat <- input_mat[sample(length(r_range) * length(p_range)), ]
 
-    # data <- apply(input_mat, 1, obtain_bic_df_nonv)
-    data <- parApply(cl, input_mat, 1, obtain_bic_df_nonv)
-    
-    stopCluster(cl)
+    data <- NULL
+
+    if (!is.null(cluster)) {
+        clusterCall(cluster, function() {
+            library(svd)
+            library(Matrix)
+            library(rhlra)
+        })
+
+        clusterExport(cluster, c("series", "L", "alpha", "envelope", "set_seed",
+            "initial_coefs"), envir = environment())
+
+        data <- parApply(cluster, input_mat, 1, obtain_bic_df_nonv)
+    } else {
+        data <- apply(input_mat, 1, obtain_bic_df_nonv)
+    }
 
     data <- as.data.frame(t(data))
     names(data) <- c("bic", "df", "loglikelihood", "r", "p")

@@ -1,14 +1,15 @@
 library(rhlra)
 library(Rssa)
+
 data(AustralianWine)
 series <- AustralianWine[, 3]
 series <- series[!is.na(series)]
 
 # раскомментировать для построения картинки с BIC
 
-# bic_data <- make_bic_data(series)
-# plot_bic_data(bic_data)
-# plot_bic_data(bic_data[bic_data$r > 10, ])
+bic_data <- make_bic_data(series)
+plot_bic_data(bic_data)
+plot_bic_data(bic_data[bic_data$r > 10, ])
 
 # stop()
 
