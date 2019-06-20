@@ -15,13 +15,21 @@ default_L <- function(series) {
     }
 }
 
-certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
+hlra <- function(series, L = default_L(series), r, coefs = NULL,
                                  alpha = 0.1, randomsearch = FALSE, debug = FALSE,
                                  envelope = unit_envelope(series), compensated = TRUE, set_seed = NULL, ...) {
 
     obj <- list()
 
     classes <- character(0)
+
+    if (is.null(coefs)) {
+        if (!is.list(series)) {
+            coefs <- numeric(0)
+        } else {
+            coefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
+        }
+    }
 
     if (compensated) {
         classes <- c(classes, "compensated")
@@ -74,29 +82,15 @@ certain_noise_optimize <- function(series, L = default_L(series), r, coefs,
     return(signal_obj)
 }
 
-white_noise_optimize <- function(series, L = default_L(series), r,
-                                 alpha = 0.1, randomsearch = FALSE, debug = FALSE,
-                                 envelope = unit_envelope(series),
-                                 compensated = TRUE, set_seed = NULL, ...) {
-    if (!is.list(series)) {
-        coefs <- numeric(0)
-    } else {
-        coefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
-    }
-    certain_noise_optimize(series, L, r, coefs, alpha, randomsearch, debug,
-                                  envelope = envelope,
-                                  set_seed = set_seed, ...)
-}
-
-arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
+hlra_ar <- function(series, L = default_L(series), r, p = 1,
                                alpha = 0.1, k = p * 4, coef_eps = 1e-7,
                                initial_coefs = NULL,
                                randomsearch = FALSE, debug = FALSE,
-                               envelope = unit_envelope(series), 
+                               envelope = unit_envelope(series),
                                compensated = TRUE, set_seed = NULL, ...) {
 
     if (p == 0) {
-        return(white_noise_optimize(series, L, r, alpha, debug = debug,
+        return(hlra(series, L, r, alpha, debug = debug,
                                     envelope = envelope, compensated = compensated,
                                     set_seed = set_seed, ...))
     }
@@ -133,12 +127,12 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
         classes <- c(classes, "1dm")
     }
 
-    class(obj) <- classes   
+    class(obj) <- classes
 
     if (!is.list(series)) {
         estimate_coefs <- function(x) {
             answer <- numeric(p)
-            tryCatch({  
+            tryCatch({
                 aobj <- ar(x/envelope, order.max = p,
                            na.action = na.pass)
                 if (length(aobj$ar) > 0) answer[1:length(aobj$ar)] <- aobj$ar
@@ -221,16 +215,16 @@ arbitrary_noise_optimize <- function(series, L = default_L(series), r, p = 1,
     return(signal_obj)
 }
 
-make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
+tune_hlra <- function(series, L = default_L(series), alpha = 0.1,
                              r_range = 1:15, p_range = 0:3,
-                          envelope = unit_envelope(series), set_seed = NULL, 
+                          envelope = unit_envelope(series), set_seed = NULL,
                           cluster = NULL, initial_coefs = NULL) {
 
     obtain_bic_df_nonv <- function(v) {
         r <- v[1]
         p <- v[2]
         cat(sprintf("Try model: r = %d, p = %d\n", r, p))
-        opt_obj <- arbitrary_noise_optimize(series, L, r, p, alpha,
+        opt_obj <- hlra_ar(series, L, r, p, alpha,
                                             envelope = envelope, set_seed = set_seed,
                                             initial_coefs = initial_coefs)
         bic <- opt_obj$bic
@@ -269,10 +263,11 @@ make_bic_data <- function(series, L = default_L(series), alpha = 0.1,
 
     data <- data[neworder,]
 
+    class(data) <- c("hlra_tune", class(data))
     data
 }
 
-plot_bic_data <- function(data) {
+plot.hlra_tune <- function(data) {
     p_range <- unique(data$p)
     plot(data$df, data$bic, type = "l",
          xlab = "Degrees of freedom", main = "BIC comparison", ylab = "BIC")

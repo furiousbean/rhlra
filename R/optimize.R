@@ -68,6 +68,7 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
             # print(coefs)
             
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
+            stepmat[is.na(stepmat)] <- 0
             
             gammas <- eigen(stepmat, FALSE, TRUE)$values
             # print(stepmat)
@@ -443,6 +444,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         if (scheme_order > 0 && ncol(last_steps) == scheme_order + 1) {
             qrobj <- qr(last_steps[, 1:scheme_order])
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
+            stepmat[is.na(stepmat)] <- 0
             
             gammas <- eigen(stepmat, FALSE, TRUE)$values
             gamma <- max(Mod(gammas))
