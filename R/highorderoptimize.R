@@ -15,9 +15,68 @@ default_L <- function(series) {
     }
 }
 
+hlra_cadzow <- function(series, L = default_L(series), r,
+                        left_diags = NULL, right_diags = NULL,
+                        epsilon = 1e-6, it_limit = 100,
+                        debug = FALSE, set_seed = NULL, ...) {
+
+    obj <- list()
+
+    classes <- character(0)
+
+    if (!is.list(series)) {
+        if (is.null(left_diags)) {
+            left_diags <- list(rep(1, L))
+            right_diags <- list(rep(1, length(series) - L + 1))
+        }
+
+
+        if (any(is.na(series))) {
+            stop("Input series must not contain NA's")
+        }
+        classes <- c(classes, "1d")
+    } else {
+        if (is.null(left_diags)) {
+            left_diags <- sapply(seq_along(series),
+                                 function(i) list(rep(1, L)),
+                                 simplify = FALSE)
+            right_diags <- sapply(seq_along(series),
+                                  function(i) list(rep(1, length(series[[i]]) - L + 1)),
+                                  simplify = FALSE)
+        }
+
+        for (i in seq_along(series)) {
+            if (any(is.na(series[[i]]))) {
+                stop("Input series must not contain NA's")
+            }
+        }
+        classes <- c(classes, "1dm")
+    }
+
+    class(obj) <- classes
+
+    signal_obj <- cadzow(obj, series, r,
+                         left_diags, right_diags,
+                         epsilon, it_limit, debug, set_seed = set_seed, ...)
+
+    if (!is.list(series)) {
+        N <- length(as.numeric(signal_obj$signal))
+    } else {
+        N <- sum(sapply(signal_obj$signal, function(series) length(as.numeric(series))))
+    }
+
+    classes <- c(classes, "hlra")
+
+    class(signal_obj) <- classes
+
+    return(signal_obj)
+}
+
+
 hlra <- function(series, L = default_L(series), r, coefs = NULL,
-                                 alpha = 0.1, randomsearch = FALSE, debug = FALSE,
-                                 envelope = unit_envelope(series), compensated = TRUE, set_seed = NULL, ...) {
+                 alpha = 0.1, debug = FALSE,
+                 envelope = unit_envelope(series),
+                 compensated = TRUE, set_seed = NULL, ...) {
 
     obj <- list()
 
@@ -84,8 +143,7 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
 
 hlra_ar <- function(series, L = default_L(series), r, p = 1,
                                alpha = 0.1, k = p * 4, coef_eps = 1e-7,
-                               initial_coefs = NULL,
-                               randomsearch = FALSE, debug = FALSE,
+                               initial_coefs = NULL, debug = FALSE,
                                envelope = unit_envelope(series),
                                compensated = TRUE, set_seed = NULL, ...) {
 

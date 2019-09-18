@@ -15,8 +15,8 @@ simple_expm <- function(m, pow) {
     }
 }
 
-hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4, 
-                        error_bound = 1e-2, 
+hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
+                        error_bound = 1e-2,
                         it_limit = 100, debug = TRUE, set_seed = NULL) {
     if (!is.null(set_seed)) {
         set_seed()
@@ -24,13 +24,13 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
 
     mask <- is.na(series)
     mask <- (1:length(series))[mask]
-    
+
     scheme_order <- min(scheme_order, length(mask) - 1)
-    
+
     signal <- series
-    
+
     # print(mask)
-    
+
     x <- rep(median(series, na.rm = TRUE), length(mask))
     prev <- NA
     series[mask] <- x
@@ -66,17 +66,17 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
             # coefs <- qr.coef(qrobj, step)
             # stepmat <- cbind(rbind(numeric(scheme_order - 1), diag(scheme_order - 1)), coefs)
             # print(coefs)
-            
+
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
             stepmat[is.na(stepmat)] <- 0
-            
+
             gammas <- eigen(stepmat, FALSE, TRUE)$values
             # print(stepmat)
             # print(gammas)
             gamma <- max(Mod(gammas))
-            
+
             basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
-            
+
             prev_norm <- sqrt(sum(last_steps[, scheme_order]^2))
             # print(error_norm)
             if (gamma < 1) {
@@ -86,7 +86,7 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
                     n <- (ls + rs) / 2;
                     approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
                     track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
-                    
+
                     if (approx_error_est > track_length_est * error_bound) {
                         rs <- n;
                     } else {
@@ -264,7 +264,7 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
 
     ops_for_hankel <- prepare_ops_for_hankel_svd(this, series, left_chol_mat, right_chol_mat)
 
-    mymat <- extmat(ops_for_hankel$mul, ops_for_hankel$tmul, 
+    mymat <- extmat(ops_for_hankel$mul, ops_for_hankel$tmul,
         ops_for_hankel$L, ops_for_hankel$K)
     result <- NULL
 
@@ -304,10 +304,10 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
             result <<- lapack_svd()
         } else {
             warning(msg)
-        }        
+        }
     })
 
-    list(N = ops_for_hankel$N, L = ops_for_hankel$L, 
+    list(N = ops_for_hankel$N, L = ops_for_hankel$L,
         d = result$d, u = result$u, v = result$v, r = r)
 }
 
@@ -430,7 +430,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         dists <<- c(dists, sqrt(change_norm2 / full_norm2))
         (change_norm2 / full_norm2) > epsilon^2
     }
-    
+
     while ((it == 0 || stop_criterion(proj, prev)) && it < it_limit && r > 0) {
         it <- it + 1
         prev <- proj
@@ -445,14 +445,14 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
             qrobj <- qr(last_steps[, 1:scheme_order])
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
             stepmat[is.na(stepmat)] <- 0
-            
+
             gammas <- eigen(stepmat, FALSE, TRUE)$values
             gamma <- max(Mod(gammas))
-            
+
             basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
-            
+
             prev_norm <- sqrt(sum(last_steps[, scheme_order]^2))
-            
+
             if (gamma < 1 && basic_error/prev_norm < error_norm_rel) {
                 ls <- 0
                 rs <- 2^14
@@ -460,7 +460,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                     n <- (ls + rs) / 2;
                     approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
                     track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
-                    
+
                     if (approx_error_est > track_length_est * error_bound) {
                         rs <- n;
                     } else {
@@ -662,7 +662,7 @@ find_step <- function(this, signal, series, v, vspace_pack, weights_chol, debug 
 
     prepare_obj <- prepare_find_step(this, signal, series, r, j, vspace_pack, weights_chol)
 
-    used_coefs <- weighted_project_onto_vspace_coef(this, prepare_obj$noise, 
+    used_coefs <- weighted_project_onto_vspace_coef(this, prepare_obj$noise,
         prepare_obj$pseudograd, weights_chol)
 
     ans <- numeric(r+1)
@@ -784,7 +784,7 @@ mgn <- function(this, series, signal, r, weights,
 
         if (coef > mgn_search_threshold) {
             #closer to the solution than previous best_signal
-            return(inner_product(minus(best_signal, signal), 
+            return(inner_product(minus(best_signal, signal),
                 plus(signal, minus(best_signal, mult(series, 2)))) > 0)
         }
         else {
@@ -880,8 +880,8 @@ mgn <- function(this, series, signal, r, weights,
     }
 
     # stop()
-    list(signal = best_signal, v = cur_v, it = it, dists = dists, 
-        noise = minus(series, best_signal), 
+    list(signal = best_signal, v = cur_v, it = it, dists = dists,
+        noise = minus(series, best_signal),
         noise_norm = inner_product(minus(series, best_signal), minus(series, best_signal)))
 }
 
@@ -917,21 +917,13 @@ correct_envelope <- function(series, envelope) {
 
 prepare_cadzow_with_mgn <- function(obj, ...) UseMethod("prepare_cadzow_with_mgn")
 
-prepare_cadzow_with_mgn.1d <- function(this, series, L, r, coefs,
-                            right_diag, series_for_cadzow, envelope) {
-    if (is.null(series_for_cadzow)) series_for_cadzow <- series
-    
+prepare_cadzow <- function(obj, ...) UseMethod("prepare_cadzow")
 
-    if (any(is.na(series))) {
-        envelope <- correct_envelope(series, envelope)            
-    }
-
-    left_diags <- inv_ac_diags(L, coefs)
+prepare_cadzow.1d <- function(this, left_diags, right_diags) {
     left_mat <- band_mat_from_diags(left_diags)
     left_chol <- Cholesky(left_mat, perm = FALSE, LDL = FALSE)
     left_chol_mat <- as(left_chol, "Matrix")
 
-    right_diags <- list(right_diag[effective_mask_for_weights(series, L)])
     right_mat <- band_mat_from_diags(right_diags)
     right_chol <- Cholesky(right_mat, perm = FALSE, LDL = FALSE)
     right_chol_mat <- as(right_chol, "Matrix")
@@ -940,6 +932,55 @@ prepare_cadzow_with_mgn.1d <- function(this, series, L, r, coefs,
     right_chol_mat <- get_rev_row_form(right_chol_mat)
 
     weights <- get_matrix_weight_matrix(left_diags, right_diags)
+
+    list(left_mat = left_mat,
+         left_chol = left_chol,
+         left_chol_mat = left_chol_mat,
+         right_mat = right_mat,
+         right_chol = right_chol,
+         right_chol_mat = right_chol_mat,
+         weights = weights)
+}
+
+prepare_cadzow.1dm <- function(this, left_diags, right_diags) {
+    left_mat <- sapply_ns(left_diags, band_mat_from_diags)
+    left_chol <- sapply_ns(left_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
+    left_chol_mat <- sapply_ns(left_chol, function(x) as(x, "Matrix"))
+
+    right_mat <- sapply_ns(right_diags, band_mat_from_diags)
+    right_chol <- sapply_ns(right_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
+    right_chol_mat <- sapply_ns(right_chol, function(x) as(x, "Matrix"))
+
+    left_chol_mat <- sapply_ns(left_chol_mat, get_rev_row_form)
+    right_chol_mat <- sapply_ns(right_chol_mat, get_rev_row_form)
+
+    weights <- mapply(function(left_diags, right_diags) get_matrix_weight_matrix(left_diags, right_diags),
+                      left_diags, right_diags)
+
+    list(left_mat = left_mat,
+         left_chol = left_chol,
+         left_chol_mat = left_chol_mat,
+         right_mat = right_mat,
+         right_chol = right_chol,
+         right_chol_mat = right_chol_mat,
+         weights = weights)
+}
+
+
+prepare_cadzow_with_mgn.1d <- function(this, series, L, r, coefs,
+                            right_diag, series_for_cadzow, envelope) {
+    if (is.null(series_for_cadzow)) series_for_cadzow <- series
+
+
+    if (any(is.na(series))) {
+        envelope <- correct_envelope(series, envelope)
+    }
+
+    left_diags <- inv_ac_diags(L, coefs)
+
+    right_diags <- list(right_diag[effective_mask_for_weights(series, L)])
+
+    list2env(prepare_cadzow(this, left_diags, right_diags), environment())
 
     common_expand_by_mask <- function(x) expand_by_mask(series, x)
 
@@ -981,21 +1022,11 @@ prepare_cadzow_with_mgn.1dm <- function(this, series, L, r, coefs,
     }
 
     left_diags <- sapply_ns(coefs, function(x) inv_ac_diags(L, x))
-    left_mat <- sapply_ns(left_diags, band_mat_from_diags)
-    left_chol <- sapply_ns(left_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
-    left_chol_mat <- sapply_ns(left_chol, function(x) as(x, "Matrix"))
 
     right_diags <- sapply_ns(seq_along(series), function(i)
         list(right_diag[[i]][effective_mask_for_weights(series[[i]], L)]))
-    right_mat <- sapply_ns(right_diags, band_mat_from_diags)
-    right_chol <- sapply_ns(right_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
-    right_chol_mat <- sapply_ns(right_chol, function(x) as(x, "Matrix"))
 
-    left_chol_mat <- sapply_ns(left_chol_mat, get_rev_row_form)
-    right_chol_mat <- sapply_ns(right_chol_mat, get_rev_row_form)
-
-    weights <- mapply(function(left_diags, right_diags) get_matrix_weight_matrix(left_diags, right_diags),
-                      left_diags, right_diags)
+    list2env(prepare_cadzow(this, left_diags, right_diags), environment())
 
     common_expand_by_mask <- function(x) mapply(expand_by_mask, series, x, SIMPLIFY = FALSE)
 
@@ -1053,7 +1084,7 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
     answer <- cadzow_data
 
     answer$signal <- common_expand_by_mask(answer$signal)
-    
+
 
     if (use_mgn) {
         answer <- mgn(this, series_for_mgn, answer$signal, r, ideal_weights,
@@ -1069,17 +1100,39 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
     answer
 }
 
+cadzow <- function(this, series, r, left_diags, right_diags,
+                            epsilon = 1e-6, it_limit = 100, debug = FALSE,
+                            set_seed = NULL, ...) {
+
+    if (!is.null(set_seed)) {
+        set_seed()
+    }
+
+    list2env(prepare_cadzow(this, left_diags, right_diags), environment())
+
+
+    cadzow_data <- oblique_cadzow_eps(this, series = series, r = r,
+                                      left_chol_mat = left_chol_mat,
+                                      right_chol_mat = right_chol_mat, weights_mat = weights,
+                                      epsilon = epsilon, it_limit = it_limit,
+                                      debug = debug, ...)
+
+    answer <- cadzow_data
+
+    answer
+}
+
 prepare_hlra_ssa <- function(obj, ...) UseMethod("prepare_hlra_ssa")
 
 prepare_hlra_ssa.1d <- function(obj, series, L) {
     K <- length(series) - L + 1
-    list(pseudord = rep(1, K), whitecoefs = numeric(0), 
+    list(pseudord = rep(1, K), whitecoefs = numeric(0),
         pseudoenvelope = rep(1, length(series)))
 }
 
 prepare_hlra_ssa.1dm <- function(obj, series, L) {
     Ks <- sapply(series, function(series) length(as.numeric(series))) - L + 1
-    list(pseudord = sapply(Ks, function(i) rep(1, i), simplify = FALSE), 
+    list(pseudord = sapply(Ks, function(i) rep(1, i), simplify = FALSE),
         whitecoefs = sapply(seq_along(series), function(i) numeric(0), simplify = FALSE),
         pseudoenvelope = sapply(series, function(i) rep(1, i), simplify = FALSE))
 }
