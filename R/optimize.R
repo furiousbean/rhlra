@@ -514,9 +514,9 @@ neg_fourier_short_mat <- function(N, indices) {
     matrix(complex(argument = (full_indx %% N)*2*pi/N), nrow = N)
 }
 
-get_comp_space_by_v <- function(this, N, v, v_2 = FALSE, return_pack = FALSE) {
-    if (!v_2) {
-        result <- eval_basis(this, N, v)
+get_comp_space_by_glrr <- function(this, N, glrr, glrr_2 = FALSE, return_pack = FALSE) {
+    if (!glrr_2) {
+        result <- eval_basis(this, N, glrr)
 
         if (return_pack) {
             return(result)
@@ -524,8 +524,8 @@ get_comp_space_by_v <- function(this, N, v, v_2 = FALSE, return_pack = FALSE) {
             return(result$basis)
         }
     }
-    if (v_2) {
-        result <- eval_tangent_basis(this, N, v)
+    if (glrr_2) {
+        result <- eval_tangent_basis(this, N, glrr)
 
         if (return_pack) {
             stop("Unsupported")
@@ -535,17 +535,17 @@ get_comp_space_by_v <- function(this, N, v, v_2 = FALSE, return_pack = FALSE) {
     }
 }
 
-get_pseudograd <- function(this, N, vspace_pack, signal, j) {
-    eval_pseudograd(this, N, vspace_pack$glrr, signal, j, vspace_pack)
+get_pseudograd <- function(this, N, zspace_pack, signal, j) {
+    eval_pseudograd(this, N, zspace_pack$glrr, signal, j, zspace_pack)
 }
 
-get_space_by_v <- function(this, N, v, v_2 = FALSE) {
-    pre_answer <- get_comp_space_by_v(this, N, v, v_2 = v_2)
-    if (v_2) {
-        v <- ssa_convolve(v, v)
+get_space_by_glrr <- function(this, N, glrr, glrr_2 = FALSE) {
+    pre_answer <- get_comp_space_by_glrr(this, N, glrr, glrr_2 = glrr_2)
+    if (glrr_2) {
+        v <- ssa_convolve(glrr, glrr)
     }
-    r <- length(v) - 1
-    j <- which.max(abs(v))
+    r <- length(glrr) - 1
+    j <- which.max(abs(glrr))
     begin_indices <- numeric(0)
     if (j > 1) begin_indices <- 1:(j - 1)
     end_indices <- numeric(0)
@@ -554,16 +554,16 @@ get_space_by_v <- function(this, N, v, v_2 = FALSE) {
     Re(pre_answer %*% a_coefs)
 }
 
-get_v_from_nonlrf_series <- function(obj, ...) UseMethod("get_v_from_nonlrf_series")
+get_glrr_from_nonlrf_series <- function(obj, ...) UseMethod("get_glrr_from_nonlrf_series")
 
-get_v_from_nonlrf_series.1d <- function(this, series, r) {
+get_glrr_from_nonlrf_series.1d <- function(this, series, r) {
     L <- r + 1
     N <- length(series)
         trmat <- traj_matrix(series[!is.na(series)], L)
     svd(trmat)$u[, L]
 }
 
-get_v_from_nonlrf_series.1dm <- function(this, series, r) {
+get_glrr_from_nonlrf_series.1dm <- function(this, series, r) {
     L <- r + 1
     Ns <- sapply(series, length)
     trmat <- do.call(cbind,
@@ -571,53 +571,53 @@ get_v_from_nonlrf_series.1dm <- function(this, series, r) {
     svd(trmat)$u[, L]
 }
 
-# weighted_project_onto_vspace <- function(series, vspace, weights) {
-#     real_part <- as.matrix(weights %*% Re(vspace))
-#     imag_part <- as.matrix(weights %*% Im(vspace))
+# weighted_project_onto_zspace <- function(series, zspace, weights) {
+#     real_part <- as.matrix(weights %*% Re(zspace))
+#     imag_part <- as.matrix(weights %*% Im(zspace))
 #     wpvs <- real_part + 1i * imag_part
-#     as.numeric(Re(vspace %*% solve(t(Conj(vspace)) %*% wpvs,
-#                                    t(Conj(vspace)) %*% as.numeric(weights %*% series))))
+#     as.numeric(Re(zspace %*% solve(t(Conj(zspace)) %*% wpvs,
+#                                    t(Conj(zspace)) %*% as.numeric(weights %*% series))))
 # }
 
-weighted_project_rotate_basis <- function(vspace, chol_weights) {
-    real_part <- as.matrix(chol_weights %*% Re(vspace))
-    imag_part <- as.matrix(chol_weights %*% Im(vspace))
-    vspace_rot <- real_part + 1i * imag_part
-    qr(vspace_rot)
+weighted_project_rotate_basis <- function(zspace, chol_weights) {
+    real_part <- as.matrix(chol_weights %*% Re(zspace))
+    imag_part <- as.matrix(chol_weights %*% Im(zspace))
+    zspace_rot <- real_part + 1i * imag_part
+    qr(zspace_rot)
 }
 
-weighted_project_onto_vspace_qr <- function(series, qrobj, vspace, chol_weights) {
+weighted_project_onto_zspace_qr <- function(series, qrobj, zspace, chol_weights) {
     series_rot <- as.numeric(chol_weights %*% series)
 
     coef <- qr.coef(qrobj, series_rot)
 
-    Re(vspace %*% coef)
+    Re(zspace %*% coef)
 }
 
-weighted_project_onto_vspace_coef_rot <- function(obj, ...) UseMethod("weighted_project_onto_vspace_coef_rot")
+weighted_project_onto_zspace_coef_rot <- function(obj, ...) UseMethod("weighted_project_onto_zspace_coef_rot")
 
-weighted_project_onto_vspace_coef_rot.1d <- function(this, series, vspace, chol_weights) {
-    list(vspace_rot = as.matrix(chol_weights %*% vspace),
+weighted_project_onto_zspace_coef_rot.1d <- function(this, series, zspace, chol_weights) {
+    list(zspace_rot = as.matrix(chol_weights %*% zspace),
         series_rot = as.numeric(chol_weights %*% series))
 }
 
-weighted_project_onto_vspace_coef_rot.1dm <- function(this, series, vspace, chol_weights) {
-    list(vspace_rot = do.call(rbind, sapply_ns(seq_along(series),
-                    function(i) as.matrix(chol_weights[[i]] %*% vspace[[i]]))),
+weighted_project_onto_zspace_coef_rot.1dm <- function(this, series, zspace, chol_weights) {
+    list(zspace_rot = do.call(rbind, sapply_ns(seq_along(series),
+                    function(i) as.matrix(chol_weights[[i]] %*% zspace[[i]]))),
         series_rot = glue_series_lists(sapply_ns(seq_along(series),
                     function(i) as.numeric(chol_weights[[i]] %*% series[[i]]))))
 }
 
-weighted_project_onto_vspace_coef <- function(this, series, vspace, chol_weights, tol = 1e-14) {
-    list2env(weighted_project_onto_vspace_coef_rot(this, series, vspace, chol_weights), environment())
+weighted_project_onto_zspace_coef <- function(this, series, zspace, chol_weights, tol = 1e-14) {
+    list2env(weighted_project_onto_zspace_coef_rot(this, series, zspace, chol_weights), environment())
 
-    # qrobj <-qr(vspace_rot, LAPACK = TRUE)
+    # qrobj <-qr(zspace_rot, LAPACK = TRUE)
     # print(diag(qr.R(qrobj)))
     # print(qrobj)
     #
     # print(as.numeric(qr.coef(qrobj, series_rot)))
 
-    svdobj <- svd(vspace_rot)
+    svdobj <- svd(zspace_rot)
 
     svdobj$d[svdobj$d < svdobj$d[1] * tol] <- Inf
     # print(svdobj$d)
@@ -626,43 +626,43 @@ weighted_project_onto_vspace_coef <- function(this, series, vspace, chol_weights
 
 prepare_find_step <- function(obj, ...) UseMethod("prepare_find_step")
 
-prepare_find_step.1d <- function(this, signal, series, r, j, vspace_pack, weights_chol) {
+prepare_find_step.1d <- function(this, signal, series, r, j, zspace_pack, weights_chol) {
     noise <- series - signal
     N <- length(series)
 
     K <- N - r
 
-    pseudograd <- Re(get_pseudograd(this, N, vspace_pack, signal, j))
+    pseudograd <- Re(get_pseudograd(this, N, zspace_pack, signal, j))
     pseudograd_minus <- sapply(1:r, function(i)
-        weighted_project_onto_vspace_qr(Re(pseudograd[, i]), vspace_pack$qrobj,
-                                        vspace_pack$basis, weights_chol))
+        weighted_project_onto_zspace_qr(Re(pseudograd[, i]), zspace_pack$qrobj,
+                                        zspace_pack$basis, weights_chol))
     pseudograd <- pseudograd - pseudograd_minus
 
     list(pseudograd = pseudograd, noise = noise)
 }
 
-prepare_find_step.1dm <- function(this, signal, series, r, j, vspace_pack, weights_chol) {
+prepare_find_step.1dm <- function(this, signal, series, r, j, zspace_pack, weights_chol) {
     noise <- mapply("-", series, signal, SIMPLIFY = FALSE)
     Ns <- sapply(series, length)
     Ks <- Ns - r
     pseudograd <- sapply_ns(seq_along(series), function(k) {
-        pseudograd_cur <- Re(get_pseudograd(this, Ns[[k]], vspace_pack[[k]], signal[[k]], j))
+        pseudograd_cur <- Re(get_pseudograd(this, Ns[[k]], zspace_pack[[k]], signal[[k]], j))
         pseudograd_minus <- sapply(1:r, function(i)
-            weighted_project_onto_vspace_qr(Re(pseudograd_cur[, i]), vspace_pack[[k]]$qrobj,
-                                            vspace_pack[[k]]$basis, weights_chol[[k]]))
+            weighted_project_onto_zspace_qr(Re(pseudograd_cur[, i]), zspace_pack[[k]]$qrobj,
+                                            zspace_pack[[k]]$basis, weights_chol[[k]]))
         pseudograd_cur - pseudograd_minus
     })
 
     list(pseudograd = pseudograd, noise = noise)
 }
 
-find_step <- function(this, signal, series, v, vspace_pack, weights_chol, debug = FALSE, ...) {
-    r <- length(v) - 1
-    j <- which.max(abs(v))
+find_step <- function(this, signal, series, glrr, zspace_pack, weights_chol, debug = FALSE, ...) {
+    r <- length(glrr) - 1
+    j <- which.max(abs(glrr))
 
-    prepare_obj <- prepare_find_step(this, signal, series, r, j, vspace_pack, weights_chol)
+    prepare_obj <- prepare_find_step(this, signal, series, r, j, zspace_pack, weights_chol)
 
-    used_coefs <- weighted_project_onto_vspace_coef(this, prepare_obj$noise,
+    used_coefs <- weighted_project_onto_zspace_coef(this, prepare_obj$noise,
         prepare_obj$pseudograd, weights_chol)
 
     ans <- numeric(r+1)
@@ -677,14 +677,14 @@ null_series <- function(series) {
     series
 }
 
-generic_get_vspace_pack <- function(this, N, v, weights_chol) {
-    result <- get_comp_space_by_v(this, N, v, return_pack = TRUE)
+generic_get_zspace_pack <- function(this, N, glrr, weights_chol) {
+    result <- get_comp_space_by_glrr(this, N, glrr, return_pack = TRUE)
     result$qrobj <- weighted_project_rotate_basis(result$basis, weights_chol)
     result
 }
 
-generic_get_signal <- function(this, x, vspace_pack, weights_chol)
-    weighted_project_onto_vspace_qr(x, vspace_pack$qrobj, vspace_pack$basis, weights_chol)
+generic_get_signal <- function(this, x, zspace_pack, weights_chol)
+    weighted_project_onto_zspace_qr(x, zspace_pack$qrobj, zspace_pack$basis, weights_chol)
 
 prepare_mgn <- function(obj, ...) UseMethod("prepare_mgn")
 
@@ -699,7 +699,7 @@ prepare_mgn.1d <- function(this, series, signal, r, weights, weights_chol) {
         weights_chol <- chol(weights)
     }
     N <- length(series)
-    get_vspace_pack <- generic_get_vspace_pack
+    get_zspace_pack <- generic_get_zspace_pack
 
     get_signal <- generic_get_signal
 
@@ -708,7 +708,7 @@ prepare_mgn.1d <- function(this, series, signal, r, weights, weights_chol) {
     plus <- function(x, y) x + y
     mult <- function(x, y) x * y
 
-    list(series = series, get_vspace_pack = get_vspace_pack, get_signal = get_signal,
+    list(series = series, get_zspace_pack = get_zspace_pack, get_signal = get_signal,
         inner_product = inner_product, minus = minus, plus = plus, mult = mult, N = N)
 }
 
@@ -726,19 +726,19 @@ prepare_mgn.1dm <- function(this, series, signal, r, weights, weights_chol) {
         weights_chol <- sapply_ns(weights, chol)
     }
     N <- sapply(series, length)
-    get_vspace_pack <- function(this, Ns, v, weights_chol)
+    get_zspace_pack <- function(this, Ns, v, weights_chol)
         sapply_ns(seq_along(Ns),
-                  function(i) generic_get_vspace_pack(this, Ns[i], v, weights_chol[[i]]))
-    get_signal <- function(this, x, vspace_pack, weights_chol)
+                  function(i) generic_get_zspace_pack(this, Ns[i], v, weights_chol[[i]]))
+    get_signal <- function(this, x, zspace_pack, weights_chol)
         sapply_ns(seq_along(x),
-                  function(i) generic_get_signal(this, x[[i]], vspace_pack[[i]], weights_chol[[i]]))
+                  function(i) generic_get_signal(this, x[[i]], zspace_pack[[i]], weights_chol[[i]]))
 
     inner_product <- function(x, y) sum(mapply(generic_inner_product, x, y, weights))
     minus <- function(x, y) mapply("-", x, y, SIMPLIFY = FALSE)
     plus <- function(x, y) mapply("+", x, y, SIMPLIFY = FALSE)
     mult <- function(x, y) mapply("*", x, y, SIMPLIFY = FALSE)
 
-    list(series = series, get_vspace_pack = get_vspace_pack, get_signal = get_signal,
+    list(series = series, get_zspace_pack = get_zspace_pack, get_signal = get_signal,
     inner_product = inner_product, minus = minus, plus = plus, mult = mult, N = N)
 }
 
@@ -748,11 +748,11 @@ mgn <- function(this, series, signal, r, weights,
                                mgn_it_limit = 100,
                                mgn_j_limit = 4, debug = FALSE,
                                max_step = 1,
-                               v_begin = NULL, weights_chol = NULL, ...) {
+                               glrr_initial = NULL, weights_chol = NULL, ...) {
     #MGN
-    cur_v <- NA
+    cur_glrr <- NA
     best_signal <- NA
-    vspace_pack <- NA
+    zspace_pack <- NA
 
     source_series <- series
 
@@ -761,18 +761,18 @@ mgn <- function(this, series, signal, r, weights,
 
     initial_best_signal <- NA
 
-    if (is.null(v_begin)) {
-        cur_v <- get_v_from_nonlrf_series(this, signal, r)
+    if (is.null(glrr_initial)) {
+        cur_glrr <- get_glrr_from_nonlrf_series(this, signal, r)
     } else {
-        cur_v <- v_begin
+        cur_glrr <- glrr_initial
     }
 
-    vspace_pack <- get_vspace_pack(this, N, cur_v, weights_chol)
-    best_signal <- get_signal(this, series, vspace_pack, weights_chol)
+    zspace_pack <- get_zspace_pack(this, N, cur_glrr, weights_chol)
+    best_signal <- get_signal(this, series, zspace_pack, weights_chol)
 
     initial_best_signal <- best_signal
 
-    if (any(is.na(cur_v))) return(signal)
+    if (any(is.na(cur_glrr))) return(signal)
     if (any(is.na(best_signal))) return(signal)
 
     no_localsearch_flag <- FALSE
@@ -813,8 +813,8 @@ mgn <- function(this, series, signal, r, weights,
 
     while(TRUE) {
         step <- NA
-        tryCatch({step <- find_step(this, signal = best_signal, series = series, v = cur_v,
-                                        vspace_pack = vspace_pack, weights_chol = weights_chol,
+        tryCatch({step <- find_step(this, signal = best_signal, series = series, glrr = cur_glrr,
+                                        zspace_pack = zspace_pack, weights_chol = weights_chol,
                                         debug = debug, ...)},
                  warning = function(x) {print(x)})
 
@@ -824,10 +824,10 @@ mgn <- function(this, series, signal, r, weights,
         j <- 0
         next_it <- FALSE
         while (j < mgn_j_limit) {
-            new_v <- cur_v + step * alpha
+            new_glrr <- cur_glrr + step * alpha
 
-            new_vspace_pack <- get_vspace_pack(this, N, new_v, weights_chol)
-            new_signal <- get_signal(this, series, new_vspace_pack, weights_chol)
+            new_zspace_pack <- get_zspace_pack(this, N, new_glrr, weights_chol)
+            new_signal <- get_signal(this, series, new_zspace_pack, weights_chol)
 
             if (stop_criterion(new_signal, step * alpha, prev_step)) {
                 next_it <- TRUE
@@ -836,8 +836,8 @@ mgn <- function(this, series, signal, r, weights,
                 best_signal <- new_signal
 
                 prev_step <- step * alpha
-                cur_v <- new_v
-                vspace_pack <- new_vspace_pack
+                cur_glrr <- new_glrr
+                zspace_pack <- new_zspace_pack
                 break
             }
             if (no_localsearch_flag) {
@@ -880,7 +880,7 @@ mgn <- function(this, series, signal, r, weights,
     }
 
     # stop()
-    list(signal = best_signal, v = cur_v, it = it, dists = dists,
+    list(signal = best_signal, glrr = cur_glrr, it = it, dists = dists,
         noise = minus(series, best_signal),
         noise_norm = inner_product(minus(series, best_signal), minus(series, best_signal)))
 }
