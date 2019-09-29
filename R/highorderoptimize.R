@@ -31,8 +31,7 @@ hlra_mgn_default_chol <- function(series) {
 
 hlra_cadzow <- function(series, L = default_L(series), r,
                         left_diags = NULL, right_diags = NULL,
-                        epsilon = 1e-6, it_limit = 100,
-                        debug = FALSE, set_seed = NULL, ...) {
+                        debug = FALSE, set_seed = NULL, additional_pars = list()) {
 
     obj <- list()
 
@@ -71,7 +70,7 @@ hlra_cadzow <- function(series, L = default_L(series), r,
 
     signal_obj <- cadzow(obj, series, r,
                          left_diags, right_diags,
-                         epsilon, it_limit, debug, set_seed = set_seed, ...)
+                         debug, set_seed = set_seed, additional_pars = additional_pars)
 
     classes <- c(classes, "hlra")
 
@@ -82,7 +81,7 @@ hlra_cadzow <- function(series, L = default_L(series), r,
 
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
-                     debug = FALSE, ...) {
+                     debug = FALSE, compensated = TRUE, additional_pars = list()) {
 
     obj <- list()
 
@@ -95,13 +94,24 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 
     }
 
+    if (compensated) {
+        classes <- c(classes, "compensated")
+    }
+
     class(obj) <- classes
 
     r <- length(initial_glrr) - 1
 
-    signal_obj <- mgn(obj, series, signal = NULL, r,
-                         weights = weights, weights_chol = weights_chol,
-                         glrr_initial = initial_glrr, debug = debug, ...)
+    mgn_call_list = list(this = obj,
+                         series = series,
+                         signal = NULL,
+                         r = r,
+                         weights = weights,
+                         weights_chol = weights_chol,
+                         glrr_initial = initial_glrr,
+                         debug = debug)
+
+    signal_obj <- do.call(mgn, expand_pars_list(mgn_call_list, mgn_add_pars_names, additional_pars))
 
     classes <- c(classes, "hlra")
 
@@ -114,7 +124,7 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 hlra <- function(series, L = default_L(series), r, coefs = NULL,
                  alpha = 0.1, debug = FALSE,
                  envelope = unit_envelope(series),
-                 compensated = TRUE, set_seed = NULL, ...) {
+                 compensated = TRUE, set_seed = NULL, additional_pars = list()) {
 
     obj <- list()
 
@@ -140,7 +150,8 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
         right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
 
         if (any(is.na(series))) {
-            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed)
+            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed,
+                                           additional_pars = additional_pars)
         }
         classes <- c(classes, "1d")
     } else {
@@ -150,7 +161,8 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
 
         for (i in seq_along(series)) {
             if (any(is.na(series[[i]]))) {
-                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed)
+                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed,
+                                                    additional_pars = additional_pars)
             }
         }
         classes <- c(classes, "1dm")
@@ -161,7 +173,7 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
     signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs,
                                  right_diag, debug = debug, envelope = envelope,
                                  series_for_cadzow = series_for_cadzow,
-                                 set_seed = set_seed, ...)
+                                 set_seed = set_seed, additional_pars = additional_pars)
 
     if (!is.list(series)) {
         N <- length(as.numeric(signal_obj$signal))
@@ -183,12 +195,12 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
                                alpha = 0.1, k = p * 4, coef_eps = 1e-7,
                                initial_coefs = NULL, debug = FALSE,
                                envelope = unit_envelope(series),
-                               compensated = TRUE, set_seed = NULL, ...) {
+                               compensated = TRUE, set_seed = NULL, additional_pars = list()) {
 
     if (p == 0) {
         return(hlra(series, L, r, alpha, debug = debug,
-                                    envelope = envelope, compensated = compensated,
-                                    set_seed = set_seed, ...))
+                    envelope = envelope, compensated = compensated,
+                    set_seed = set_seed, additional_pars = additional_pars))
     }
 
     obj <- list()
@@ -207,7 +219,8 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
         right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
         K <- length(series) - L + 1
         if (any(is.na(series))) {
-            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed)
+            series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed,
+                                           additional_pars = additional_pars)
         }
         classes <- c(classes, "1d")
     } else {
@@ -217,7 +230,8 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
         Ks <- sapply(series, function(series) length(as.numeric(series))) - L + 1
         for (i in seq_along(series)) {
             if (any(is.na(series[[i]]))) {
-                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed)
+                series_for_cadzow[[i]] <- fill_gaps(series[[i]][effective_mask(series[[i]])], r, debug, set_seed = set_seed,
+                                                    additional_pars = additional_pars)
             }
         }
         classes <- c(classes, "1dm")
@@ -258,7 +272,7 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
 
 
     if (is.null(initial_coefs)) {
-        signal_obj <- hlra_ssa(obj, series_for_cadzow, L, r, debug, set_seed)
+        signal_obj <- hlra_ssa(obj, series_for_cadzow, L, r, debug, set_seed, additional_pars)
 
         noise <- signal_obj$noise
         coefs <- estimate_coefs(noise)
@@ -277,7 +291,7 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
 
         signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs, right_diag, debug = debug,
                                      envelope = envelope, series_for_cadzow = series_for_cadzow,
-                                     set_seed = set_seed, ...)
+                                     set_seed = set_seed, additional_pars = additional_pars)
 
         noise <- signal_obj$noise
         coefs_old <- coefs
@@ -312,17 +326,17 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
 }
 
 tune_hlra <- function(series, L = default_L(series), alpha = 0.1,
-                             r_range = 1:15, p_range = 0:3,
-                          envelope = unit_envelope(series), set_seed = NULL,
-                          cluster = NULL, initial_coefs = NULL) {
+                      r_range = 1:15, p_range = 0:3,
+                      envelope = unit_envelope(series), set_seed = NULL,
+                      cluster = NULL, initial_coefs = NULL, additional_pars = list()) {
 
     obtain_bic_df_nonv <- function(v) {
         r <- v[1]
         p <- v[2]
         cat(sprintf("Try model: r = %d, p = %d\n", r, p))
         opt_obj <- hlra_ar(series, L, r, p, alpha,
-                                            envelope = envelope, set_seed = set_seed,
-                                            initial_coefs = initial_coefs)
+                           envelope = envelope, set_seed = set_seed,
+                           initial_coefs = initial_coefs, additional_pars = additional_pars)
         bic <- opt_obj$bic
         df <- opt_obj$df
         loglikelihood <- opt_obj$loglikelihood

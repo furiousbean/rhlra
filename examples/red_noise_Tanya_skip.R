@@ -18,7 +18,7 @@ p = 3
 # answer <- hlra(series, r = r,
                                  # coefs = c(0.60983015, 0.08978667, 0.17555034), debug = TRUE)
 
-answer <- hlra_ar(series, r = r, p = 3)
+answer <- hlra_ar(series, r = r, p = 3, debug = TRUE)
 
 
 matplot(1:length(answer$signal),

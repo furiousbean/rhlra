@@ -15,9 +15,9 @@ simple_expm <- function(m, pow) {
     }
 }
 
-hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
-                        error_bound = 1e-2,
-                        it_limit = 100, debug = TRUE, set_seed = NULL) {
+hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order = 4,
+                        igapfill_error_bound = 1e-2, igapfill_it_limit = 100, debug = TRUE, 
+                        set_seed = NULL, additional_pars = list()) {
     if (!is.null(set_seed)) {
         set_seed()
     }
@@ -25,7 +25,7 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
     mask <- is.na(series)
     mask <- (1:length(series))[mask]
 
-    scheme_order <- min(scheme_order, length(mask) - 1)
+    igapfill_scheme_order <- min(igapfill_scheme_order, length(mask) - 1)
 
     signal <- series
 
@@ -44,14 +44,14 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
 
     it <- 0
 
-    while (it < it_limit && (is.na(prev) || sum(abs(prev - x)) > eps)) {
+    while (it < igapfill_it_limit && (is.na(prev) || sum(abs(prev - x)) > igapfill_eps)) {
         # print(it)
         # print(series)
         pseudoobj <- list()
         class(pseudoobj) <- "1d"
         L <- default_L(series)
 
-        series <- hlra_ssa(pseudoobj, series, L, r, debug, set_seed)$signal
+        series <- hlra_ssa(pseudoobj, series, L, r, debug, set_seed, additional_pars)$signal
         # print(series)
         prev <- x
         x <- series[mask]
@@ -61,10 +61,10 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
         series <- signal
         last_steps <- cbind(last_steps, step)
 
-        if (scheme_order > 0 && ncol(last_steps) == scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:scheme_order])
+        if (igapfill_scheme_order > 0 && ncol(last_steps) == igapfill_scheme_order + 1) {
+            qrobj <- qr(last_steps[, 1:igapfill_scheme_order])
             # coefs <- qr.coef(qrobj, step)
-            # stepmat <- cbind(rbind(numeric(scheme_order - 1), diag(scheme_order - 1)), coefs)
+            # stepmat <- cbind(rbind(numeric(igapfill_scheme_order - 1), diag(igapfill_scheme_order - 1)), coefs)
             # print(coefs)
 
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
@@ -77,7 +77,7 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
 
             basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
 
-            prev_norm <- sqrt(sum(last_steps[, scheme_order]^2))
+            prev_norm <- sqrt(sum(last_steps[, igapfill_scheme_order]^2))
             # print(error_norm)
             if (gamma < 1) {
                 ls <- 0
@@ -87,15 +87,15 @@ hlra_igapfill <- function(series, r, eps = 1e-6, scheme_order = 4,
                     approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
                     track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
 
-                    if (approx_error_est > track_length_est * error_bound) {
+                    if (approx_error_est > track_length_est * igapfill_error_bound) {
                         rs <- n;
                     } else {
                         ls <- n;
                     }
                 }
                 # print(n)
-                v <- solve((stepmat - diag(scheme_order)), (simple_expm(stepmat, n + 1) - diag(scheme_order)))
-                v <- (last_steps[, -1] %*% v)[, scheme_order]
+                v <- solve((stepmat - diag(igapfill_scheme_order)), (simple_expm(stepmat, n + 1) - diag(igapfill_scheme_order)))
+                v <- (last_steps[, -1] %*% v)[, igapfill_scheme_order]
                 x <- prev + v
                 last_steps <- matrix(numeric(0), nrow = length(mask))
             } else {
@@ -281,7 +281,7 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
 
     tryCatch({
         if (svd_type == "svd") {
-            result <<- lapack_svd()
+            result <- lapack_svd()
         } else {
             if (svd_type == "propack") {
                 result <- propack.svd(mymat, r)
@@ -375,7 +375,9 @@ hankel_diag_average_double <- function(this, reslist, left_chol_mat, right_chol_
 
 generic_inner_product <- function(x, y, mat) sum(as.numeric(x * as.numeric(mat %*% as.numeric(y))))
 
-generic_inner_product_chol <- function(x, y, cholmat) sum(as.numeric(as.numeric(cholmat %*% as.numeric(x)) * as.numeric(cholmat %*% as.numeric(y))))
+generic_inner_product_chol <- function(x, y, cholmat) {
+    sum(as.numeric(as.numeric(cholmat %*% as.numeric(x)) * as.numeric(cholmat %*% as.numeric(y))))
+}
 
 prepare_oblique_cadzow_eps <- function(obj, ...) UseMethod("prepare_oblique_cadzow_eps")
 
@@ -411,10 +413,14 @@ prepare_oblique_cadzow_eps.1dm <- function(this, series, weights_mat) {
 }
 
 oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
-                           weights_mat, epsilon = 1e-6,
-                           it_limit = 100, debug = FALSE,
-                           scheme_order = 4, error_bound = 1e-2,
-                           error_norm_rel = 1e-1, ...) {
+                           weights_mat, cadzow_epsilon = 1e-6,
+                           cadzow_it_limit = 100, debug = FALSE,
+                           cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
+                           cadzow_error_norm_rel = 1e-1, set_seed = NULL, ...) {
+
+    if (!is.null(set_seed)) {
+        set_seed()
+    }
 
     list2env(prepare_oblique_cadzow_eps(this, series, weights_mat), environment())
 
@@ -430,10 +436,10 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         change_norm2 <- inner_product(minus(new, old), minus(new, old))
         full_norm2 <- inner_product(new, new)
         dists <<- c(dists, sqrt(change_norm2 / full_norm2))
-        (change_norm2 / full_norm2) > epsilon^2
+        (change_norm2 / full_norm2) > cadzow_epsilon^2
     }
 
-    while ((it == 0 || stop_criterion(proj, prev)) && it < it_limit && r > 0) {
+    while ((it == 0 || stop_criterion(proj, prev)) && it < cadzow_it_limit && r > 0) {
         it <- it + 1
         prev <- proj
         proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
@@ -443,8 +449,8 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
 
         last_steps <- cbind(last_steps, step)
 
-        if (scheme_order > 0 && ncol(last_steps) == scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:scheme_order])
+        if (cadzow_scheme_order > 0 && ncol(last_steps) == cadzow_scheme_order + 1) {
+            qrobj <- qr(last_steps[, 1:cadzow_scheme_order])
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
             stepmat[is.na(stepmat)] <- 0
 
@@ -453,9 +459,9 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
 
             basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
 
-            prev_norm <- sqrt(sum(last_steps[, scheme_order]^2))
+            prev_norm <- sqrt(sum(last_steps[, cadzow_scheme_order]^2))
 
-            if (gamma < 1 && basic_error/prev_norm < error_norm_rel) {
+            if (gamma < 1 && basic_error/prev_norm < cadzow_error_norm_rel) {
                 ls <- 0
                 rs <- 2^14
                 for (i in 1:14) {
@@ -463,15 +469,15 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                     approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
                     track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
 
-                    if (approx_error_est > track_length_est * error_bound) {
+                    if (approx_error_est > track_length_est * cadzow_error_bound) {
                         rs <- n;
                     } else {
                         ls <- n;
                     }
                 }
 
-                v <- solve((stepmat - diag(scheme_order)), (simple_expm(stepmat, n + 1) - diag(scheme_order)))
-                v <- (last_steps[, -1] %*% v)[, scheme_order]
+                v <- solve((stepmat - diag(cadzow_scheme_order)), (simple_expm(stepmat, n + 1) - diag(cadzow_scheme_order)))
+                v <- (last_steps[, -1] %*% v)[, cadzow_scheme_order]
 
                 last_steps <- empty_last_steps
                 proj <- unglue(glue(prev) + v)
@@ -749,7 +755,7 @@ mgn <- function(this, series, signal, r, weights,
                                mgn_search_threshold = 1e-7,
                                mgn_it_limit = 100,
                                mgn_j_limit = 4, debug = FALSE,
-                               max_step = 1,
+                               mgn_max_step = 1,
                                glrr_initial = NULL, weights_chol = NULL, ...) {
     #MGN
     cur_glrr <- NA
@@ -810,7 +816,7 @@ mgn <- function(this, series, signal, r, weights,
     it <- 0
 
     dists <- noise_distance(best_signal)
-    prev_step <- max_step
+    prev_step <- mgn_max_step
 
     while(TRUE) {
         step <- NA
@@ -821,7 +827,7 @@ mgn <- function(this, series, signal, r, weights,
 
         if (any(is.na(step))) break
 
-        alpha <- max_step
+        alpha <- mgn_max_step
         j <- 0
         next_it <- FALSE
         while (j < mgn_j_limit) {
@@ -900,11 +906,20 @@ unit_envelope <- function(series, bignumber = 1e6) {
     }
 }
 
-fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL) {
+fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL, additional_pars = list()) {
     result <- series
     if (any(is.na(series))) {
         if (debug) cat("fillgaps... ")
-        result <- hlra_igapfill(series, r, set_seed = set_seed, debug = debug)
+
+        igapfill_call_list = list(series = series,
+                                  r = r,
+                                  set_seed = set_seed,
+                                  debug = debug,
+                                  additional_pars = additional_pars)
+
+        result <- do.call(hlra_igapfill, 
+            expand_pars_list(igapfill_call_list, igapfill_add_pars_names, additional_pars))
+
         if (debug) cat("done\n")
     }
     result
@@ -1063,24 +1078,25 @@ prepare_cadzow_with_mgn.1dm <- function(this, series, L, r, coefs,
 
 cadzow_with_mgn <- function(this, series, L, r, coefs,
                             right_diag, series_for_cadzow = NULL,
-                            epsilon = 1e-6, use_mgn = TRUE,
-                            it_limit = 100, debug = FALSE,
-                            envelope = unit_envelope(this, series), set_seed = NULL, ...) {
+                            use_mgn = TRUE, debug = FALSE,
+                            envelope = unit_envelope(this, series), set_seed = NULL,
+                            additional_pars) {
     series_for_mgn <- series
-
-    if (!is.null(set_seed)) {
-        set_seed()
-    }
 
     list2env(prepare_cadzow_with_mgn(this, series, L, r, coefs,
                             right_diag, series_for_cadzow, envelope), environment())
 
+    cadzow_call_list = list(this = this,
+                            series = series_for_cadzow,
+                            r = r,
+                            left_chol_mat = left_chol_mat,
+                            right_chol_mat = right_chol_mat,
+                            weights_mat = weights,
+                            set_seed = set_seed,
+                            debug = debug)
 
-    cadzow_data <- oblique_cadzow_eps(this, series = series_for_cadzow, r = r,
-                               left_chol_mat = left_chol_mat,
-                               right_chol_mat = right_chol_mat, weights_mat = weights,
-                               epsilon = epsilon, it_limit = it_limit,
-                               debug = debug, ...)
+    cadzow_data <- do.call(oblique_cadzow_eps,
+                           expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))
 
     answer <- cadzow_data
 
@@ -1088,8 +1104,16 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
 
 
     if (use_mgn) {
-        answer <- mgn(this, series_for_mgn, answer$signal, r, ideal_weights,
-                                   debug = debug, weights_chol = weights_chol, ...)
+        mgn_call_list = list(this = this,
+                             series = series_for_mgn,
+                             signal = answer$signal,
+                             r = r,
+                             weights = ideal_weights,
+                             debug = debug,
+                             weights_chol = weights_chol)
+
+        answer <- do.call(mgn, expand_pars_list(mgn_call_list, mgn_add_pars_names, additional_pars))
+
         answer$cadzow_it <- cadzow_data$it
     }
 
@@ -1102,21 +1126,21 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
 }
 
 cadzow <- function(this, series, r, left_diags, right_diags,
-                            epsilon = 1e-6, it_limit = 100, debug = FALSE,
-                            set_seed = NULL, ...) {
-
-    if (!is.null(set_seed)) {
-        set_seed()
-    }
+                   debug = FALSE, set_seed = NULL, additional_pars) {
 
     list2env(prepare_cadzow(this, left_diags, right_diags), environment())
 
+    cadzow_call_list = list(this = this,
+                            series = series,
+                            r = r,
+                            left_chol_mat = left_chol_mat,
+                            right_chol_mat = right_chol_mat,
+                            weights_mat = weights,
+                            set_seed = set_seed,
+                            debug = debug)
 
-    cadzow_data <- oblique_cadzow_eps(this, series = series, r = r,
-                                      left_chol_mat = left_chol_mat,
-                                      right_chol_mat = right_chol_mat, weights_mat = weights,
-                                      epsilon = epsilon, it_limit = it_limit,
-                                      debug = debug, ...)
+    cadzow_data <- do.call(oblique_cadzow_eps,
+                           expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))
 
     answer <- cadzow_data
 
@@ -1138,11 +1162,30 @@ prepare_hlra_ssa.1dm <- function(obj, series, L) {
         pseudoenvelope = sapply(series, function(i) rep(1, i), simplify = FALSE))
 }
 
-hlra_ssa <- function(obj, series, L, r, debug, set_seed, ...) {
+hlra_ssa <- function(obj, series, L, r, debug, set_seed, additional_pars) {
     prepare_list <- prepare_hlra_ssa(obj, series, L)
 
+    additional_pars["cadzow_it_limit"] <- 1
+    additional_pars["cadzow_epsilon"] <- 1
+
     cadzow_with_mgn(obj, series, L, r, coefs = prepare_list$whitecoefs,
-        right_diag = prepare_list$pseudord, epsilon = 1, use_mgn = FALSE, debug = debug,
+        right_diag = prepare_list$pseudord, use_mgn = FALSE, debug = debug,
         envelope = prepare_list$pseudoenvelope, series_for_cadzow = series,
-        set_seed = set_seed, ...)
+        set_seed = set_seed, additional_pars = additional_pars)
+}
+
+
+mgn_add_pars_names <- c("mgn_search_threshold", "mgn_it_limit", "mgn_j_limit", "mgn_max_step")
+cadzow_add_pars_names <- c("cadzow_epsilon", "cadzow_it_limit", "cadzow_scheme_order", "cadzow_error_bound",
+                           "cadzow_error_norm_rel", "svd_type")
+igapfill_add_pars_names <- c("igapfill_eps", "igapfill_it_limit", "igapfill_scheme_order", "igapfill_error_bound")
+
+expand_pars_list <- function(input_list, pars_names, additional_pars) {
+    for (name in pars_names) {
+        if (name %in% names(additional_pars)) {
+            input_list[name] <- additional_pars[name]
+        }
+    }
+
+    input_list
 }
