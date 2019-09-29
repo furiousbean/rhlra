@@ -15,6 +15,20 @@ default_L <- function(series) {
     }
 }
 
+hlra_mgn_default_chol <- function(series) {
+    make_series_01_vector <- function(s) {
+        answer <- rep(1, length(s))
+        answer[is.na(s)] <- 0
+        list(answer)
+    }
+
+    if (!is.list(series)) {
+        return(band_mat_from_diags(make_series_01_vector(series)))
+    } else {
+        return(sapply_ns(band_mat_from_diags, make_series_01_vector(series)))
+    }
+}
+
 hlra_cadzow <- function(series, L = default_L(series), r,
                         left_diags = NULL, right_diags = NULL,
                         epsilon = 1e-6, it_limit = 100,
@@ -59,11 +73,35 @@ hlra_cadzow <- function(series, L = default_L(series), r,
                          left_diags, right_diags,
                          epsilon, it_limit, debug, set_seed = set_seed, ...)
 
+    classes <- c(classes, "hlra")
+
+    class(signal_obj) <- classes
+
+    return(signal_obj)
+}
+
+hlra_mgn <- function(series, initial_glrr, weights = NULL,
+                     weights_chol = hlra_mgn_default_chol(series),
+                     debug = FALSE, ...) {
+
+    obj <- list()
+
+    classes <- character(0)
+
     if (!is.list(series)) {
-        N <- length(as.numeric(signal_obj$signal))
+        classes <- c(classes, "1d")
     } else {
-        N <- sum(sapply(signal_obj$signal, function(series) length(as.numeric(series))))
+        classes <- c(classes, "1dm")
+
     }
+
+    class(obj) <- classes
+
+    r <- length(initial_glrr) - 1
+
+    signal_obj <- mgn(obj, series, signal = NULL, r,
+                         weights = weights, weights_chol = weights_chol,
+                         glrr_initial = initial_glrr, debug = debug, ...)
 
     classes <- c(classes, "hlra")
 

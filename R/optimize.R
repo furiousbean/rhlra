@@ -375,6 +375,8 @@ hankel_diag_average_double <- function(this, reslist, left_chol_mat, right_chol_
 
 generic_inner_product <- function(x, y, mat) sum(as.numeric(x * as.numeric(mat %*% as.numeric(y))))
 
+generic_inner_product_chol <- function(x, y, cholmat) sum(as.numeric(as.numeric(cholmat %*% as.numeric(x)) * as.numeric(cholmat %*% as.numeric(y))))
+
 prepare_oblique_cadzow_eps <- function(obj, ...) UseMethod("prepare_oblique_cadzow_eps")
 
 prepare_oblique_cadzow_eps.1d <- function(this, series, weights_mat) {
@@ -688,7 +690,7 @@ generic_get_signal <- function(this, x, zspace_pack, weights_chol)
 
 prepare_mgn <- function(obj, ...) UseMethod("prepare_mgn")
 
-prepare_mgn.1d <- function(this, series, signal, r, weights, weights_chol) {
+prepare_mgn.1d <- function(this, series, r, weights, weights_chol) {
     series <- as.numeric(series)
 
     if (any(is.na(series))) {
@@ -703,7 +705,7 @@ prepare_mgn.1d <- function(this, series, signal, r, weights, weights_chol) {
 
     get_signal <- generic_get_signal
 
-    inner_product <- function(x, y) generic_inner_product(x, y, weights)
+    inner_product <- function(x, y) generic_inner_product_chol(x, y, weights_chol)
     minus <- function(x, y) x - y
     plus <- function(x, y) x + y
     mult <- function(x, y) x * y
@@ -712,7 +714,7 @@ prepare_mgn.1d <- function(this, series, signal, r, weights, weights_chol) {
         inner_product = inner_product, minus = minus, plus = plus, mult = mult, N = N)
 }
 
-prepare_mgn.1dm <- function(this, series, signal, r, weights, weights_chol) {
+prepare_mgn.1dm <- function(this, series, r, weights, weights_chol) {
     series <- sapply_ns(series, as.numeric)
 
     for (i in seq_along(series)) {
@@ -733,7 +735,7 @@ prepare_mgn.1dm <- function(this, series, signal, r, weights, weights_chol) {
         sapply_ns(seq_along(x),
                   function(i) generic_get_signal(this, x[[i]], zspace_pack[[i]], weights_chol[[i]]))
 
-    inner_product <- function(x, y) sum(mapply(generic_inner_product, x, y, weights))
+    inner_product <- function(x, y) sum(mapply(generic_inner_product_chol, x, y, weights_chol))
     minus <- function(x, y) mapply("-", x, y, SIMPLIFY = FALSE)
     plus <- function(x, y) mapply("+", x, y, SIMPLIFY = FALSE)
     mult <- function(x, y) mapply("*", x, y, SIMPLIFY = FALSE)
@@ -756,8 +758,7 @@ mgn <- function(this, series, signal, r, weights,
 
     source_series <- series
 
-    list2env(prepare_mgn(this, series, signal, r, weights, weights_chol), environment())
-
+    list2env(prepare_mgn(this, series, r, weights, weights_chol), environment())
 
     initial_best_signal <- NA
 
