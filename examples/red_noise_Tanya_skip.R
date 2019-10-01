@@ -2,6 +2,7 @@ library(rhlra)
 
 alldata <- read.table("prod.cts", header = TRUE)
 series <- alldata$Series
+true_series <- series
 # series <- c(series, , rep(NA, 50))
 series[10:49] <- NA
 
@@ -22,6 +23,8 @@ answer <- hlra_ar(series, r = r, p = 3, debug = TRUE)
 
 
 matplot(1:length(answer$signal),
-        cbind(answer$signal, as.numeric(series)),
+        cbind(answer$signal,
+        as.numeric(true_series),
+        as.numeric(series)),
         type = "l")
 

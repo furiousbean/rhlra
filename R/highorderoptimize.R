@@ -1,6 +1,6 @@
 
-hlra_residuals <- function(noise, coefs) {
-    norm_mat <- band_mat_from_diags(inv_ac_diags(length(noise), coefs))
+hlra_residuals <- function(noise, ar_coefs) {
+    norm_mat <- band_mat_from_diags(inv_ac_diags(length(noise), ar_coefs))
     left_chol <- Cholesky(norm_mat, perm = FALSE, LDL = FALSE)
     as.numeric(as(left_chol, "Matrix") %*% noise)
 }
@@ -29,7 +29,7 @@ hlra_mgn_default_chol <- function(series) {
     }
 }
 
-hlra_cadzow <- function(series, L = default_L(series), r,
+hlra_cadzow <- function(series, r, L = default_L(series),
                         left_diags = NULL, right_diags = NULL,
                         debug = FALSE, set_seed = NULL, additional_pars = list()) {
 
@@ -121,7 +121,7 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 }
 
 
-hlra <- function(series, L = default_L(series), r, coefs = NULL,
+hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
                  alpha = 0.1, debug = FALSE,
                  envelope = unit_envelope(series),
                  compensated = TRUE, set_seed = NULL, additional_pars = list()) {
@@ -130,11 +130,11 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
 
     classes <- character(0)
 
-    if (is.null(coefs)) {
+    if (is.null(ar_coefs)) {
         if (!is.list(series)) {
-            coefs <- numeric(0)
+            ar_coefs <- numeric(0)
         } else {
-            coefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
+            ar_coefs <- sapply(seq_along(series), function(i) numeric(0), simplify = FALSE)
         }
     }
 
@@ -170,7 +170,7 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
 
     class(obj) <- classes
 
-    signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs,
+    signal_obj <- cadzow_with_mgn(obj, series, L, r, ar_coefs,
                                  right_diag, debug = debug, envelope = envelope,
                                  series_for_cadzow = series_for_cadzow,
                                  set_seed = set_seed, additional_pars = additional_pars)
@@ -182,7 +182,7 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
     }
 
     signal_obj$bic <- -log(N) * signal_obj$df  + 2 * signal_obj$loglikelihood
-    signal_obj$coefs <- coefs
+    signal_obj$ar_coefs <- ar_coefs
 
     classes <- c(classes, "hlra")
 
@@ -191,14 +191,14 @@ hlra <- function(series, L = default_L(series), r, coefs = NULL,
     return(signal_obj)
 }
 
-hlra_ar <- function(series, L = default_L(series), r, p = 1,
-                               alpha = 0.1, k = p * 4, coef_eps = 1e-7,
-                               initial_coefs = NULL, debug = FALSE,
-                               envelope = unit_envelope(series),
-                               compensated = TRUE, set_seed = NULL, additional_pars = list()) {
+hlra_ar <- function(series, r, p = 1, L = default_L(series),
+                    alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
+                    initial_ar_coefs = NULL, debug = FALSE,
+                    envelope = unit_envelope(series),
+                    compensated = TRUE, set_seed = NULL, additional_pars = list()) {
 
     if (p == 0) {
-        return(hlra(series, L, r, alpha, debug = debug,
+        return(hlra(series, r, L, alpha, debug = debug,
                     envelope = envelope, compensated = compensated,
                     set_seed = set_seed, additional_pars = additional_pars))
     }
@@ -271,42 +271,42 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
     }
 
 
-    if (is.null(initial_coefs)) {
+    if (is.null(initial_ar_coefs)) {
         signal_obj <- hlra_ssa(obj, series_for_cadzow, L, r, debug, set_seed, additional_pars)
 
         noise <- signal_obj$noise
-        coefs <- estimate_coefs(noise)
+        ar_coefs <- estimate_coefs(noise)
     } else {
-        coefs <- initial_coefs
+        ar_coefs <- initial_ar_coefs
     }
 
     if (!is.list(series)) {
-        coefs_all <- matrix(coefs, p, 1)
+        ar_coefs_all <- matrix(ar_coefs, p, 1)
     } else {
-        coefs_all <- matrix(glue_series_lists(coefs), p * length(series), 1)
+        ar_coefs_all <- matrix(glue_series_lists(ar_coefs), p * length(series), 1)
     }
 
     for (i in 1:k) {
         if (debug) cat(sprintf("%d EM iteration\n", i))
 
-        signal_obj <- cadzow_with_mgn(obj, series, L, r, coefs, right_diag, debug = debug,
+        signal_obj <- cadzow_with_mgn(obj, series, L, r, ar_coefs, right_diag, debug = debug,
                                      envelope = envelope, series_for_cadzow = series_for_cadzow,
                                      set_seed = set_seed, additional_pars = additional_pars)
 
         noise <- signal_obj$noise
-        coefs_old <- coefs
-        coefs <- estimate_coefs(noise)
+        ar_coefs_old <- ar_coefs
+        ar_coefs <- estimate_coefs(noise)
 
         if (!is.list(series)) {
-            coefs_all <- cbind(coefs_all, coefs)
-            if (sum(abs(coefs_old - coefs)) < coef_eps) break
+            ar_coefs_all <- cbind(ar_coefs_all, ar_coefs)
+            if (sum(abs(ar_coefs_old - ar_coefs)) < ar_coefs_eps) break
         } else {
-            coefs_all <- cbind(coefs_all, glue_series_lists(coefs))
-            if (sum(abs(glue_series_lists(coefs_old) - glue_series_lists(coefs))) < coef_eps) break
+            ar_coefs_all <- cbind(ar_coefs_all, glue_series_lists(ar_coefs))
+            if (sum(abs(glue_series_lists(ar_coefs_old) - glue_series_lists(ar_coefs))) < ar_coefs_eps) break
         }
     }
 
-    if (debug) print(coefs_all)
+    if (debug) print(ar_coefs_all)
 
     if (!is.list(series)) {
         N <- length(as.numeric(signal_obj$signal))
@@ -315,7 +315,7 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
     }
 
     signal_obj$bic <- -log(N) * signal_obj$df  + 2 * signal_obj$loglikelihood
-    signal_obj$coefs <- coefs
+    signal_obj$ar_coefs <- ar_coefs
     signal_obj$em_it <- k
 
     classes <- c(classes, "hlra")
@@ -325,18 +325,18 @@ hlra_ar <- function(series, L = default_L(series), r, p = 1,
     return(signal_obj)
 }
 
-tune_hlra <- function(series, L = default_L(series), alpha = 0.1,
-                      r_range = 1:15, p_range = 0:3,
+tune_hlra <- function(series, r_range = 1:15, p_range = 0:3, 
+                      L = default_L(series), alpha = 0.1,
                       envelope = unit_envelope(series), set_seed = NULL,
-                      cluster = NULL, initial_coefs = NULL, additional_pars = list()) {
+                      cluster = NULL, initial_ar_coefs = NULL, additional_pars = list()) {
 
     obtain_bic_df_nonv <- function(v) {
         r <- v[1]
         p <- v[2]
         cat(sprintf("Try model: r = %d, p = %d\n", r, p))
-        opt_obj <- hlra_ar(series, L, r, p, alpha,
+        opt_obj <- hlra_ar(series, r, p, L, alpha,
                            envelope = envelope, set_seed = set_seed,
-                           initial_coefs = initial_coefs, additional_pars = additional_pars)
+                           initial_ar_coefs = initial_ar_coefs, additional_pars = additional_pars)
         bic <- opt_obj$bic
         df <- opt_obj$df
         loglikelihood <- opt_obj$loglikelihood
@@ -359,7 +359,7 @@ tune_hlra <- function(series, L = default_L(series), alpha = 0.1,
         })
 
         clusterExport(cluster, c("series", "L", "alpha", "envelope", "set_seed",
-            "initial_coefs"), envir = environment())
+            "initial_ar_coefs", "additional_pars"), envir = environment())
 
         data <- parApply(cluster, input_mat, 1, obtain_bic_df_nonv)
     } else {
