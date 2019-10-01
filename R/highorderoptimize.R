@@ -1,3 +1,16 @@
+#' rhlra: Hankel Low-Rank Approximation for R package.
+#'
+#' TODO
+#' The foo package provides three categories of important functions:
+#' foo, bar and baz.
+#' 
+#' @section Foo functions:
+#' The foo functions ...
+#'
+#' @docType package
+#' @name rhlra
+NULL
+
 
 hlra_residuals <- function(noise, ar_coefs) {
     norm_mat <- band_mat_from_diags(inv_ac_diags(length(noise), ar_coefs))
@@ -29,6 +42,20 @@ hlra_mgn_default_chol <- function(series) {
     }
 }
 
+#' Perform Cadzow iterations.
+#'
+#' @param series Source time series, numeric vector or list of numeric vectors (without NA's)
+#' @param r Desired rank.
+#' @param L Window length.
+#' @param left_diags Diagonals of left SVD weights matrix.
+#' @param right_diags Diagonals of right SVD weights matrix.
+#' @param debug Debug mode on/off switch.
+#' @param set_seed Seed function for deterministic SVD decomposition
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Object of class "hlra" containing "signal" field, which is result of optimization.
+#' @examples
+#' x <- hlra_cadzow(1:20, r = 1)
+#' plot(x$signal, type = "b")
 hlra_cadzow <- function(series, r, L = default_L(series),
                         left_diags = NULL, right_diags = NULL,
                         debug = FALSE, set_seed = NULL, additional_pars = list()) {
@@ -79,6 +106,21 @@ hlra_cadzow <- function(series, r, L = default_L(series),
     return(signal_obj)
 }
 
+#' Perform Modified Gauss-Newton Algorithm.
+#'
+#' @param series Source time series, numeric vector or list of numeric vectors (may contain NA's)
+#' @param initial_glrr Initial GLRR, which is non-null numeric vector of length more than 1.
+#' @param weights Optional weights matrix of class Matrix.
+#' @param weights_chol Optional Cholesky decomposition of weights matrix, matrix of class Matrix
+#' @param debug Debug mode on/off switch.
+#' @param compensated Use Compensated Horner Scheme in MGN algorithm?
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Object of class "hlra" containing "signal" field, which is result of optimization.
+#' @examples
+#' gap <- 18
+#' series <- c(1, numeric(gap), 1)
+#' x <- hlra_mgn(series, c(.3, .5))
+#' plot(x$signal, type = "b")
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
                      debug = FALSE, compensated = TRUE, additional_pars = list()) {
@@ -120,7 +162,24 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
     return(signal_obj)
 }
 
-
+#' Perform generic HLRA problem with inverted autoregressive weights.
+#'
+#' @param series Source time series, numeric vector or list of numeric vectors (may contain NA's)
+#' @param r Desired rank.
+#' @param L Window length.
+#' @param ar_coefs Autoregression coefficients.
+#' @param alpha Parameter for Cadzow weights search
+#' @param debug Debug mode on/off switch.
+#' @param envelope Optional noise envelope.
+#' @param compensated Use Compensated Horner Scheme in MGN algorithm?
+#' @param set_seed Seed function for deterministic SVD decomposition
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Object of class "hlra" containing "signal" field, which is result of optimization.
+#' @examples
+#' gap <- 18
+#' series <- c(1, numeric(gap), 1)
+#' x <- hlra(series, r = 1)
+#' plot(x$signal, type = "b")
 hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
                  alpha = 0.1, debug = FALSE,
                  envelope = unit_envelope(series),
@@ -191,6 +250,29 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
     return(signal_obj)
 }
 
+#' Perform generic HLRA problem with unknown inverted autoregressive weights.
+#'
+#' @param series Source time series, numeric vector or list of numeric vectors (may contain NA's)
+#' @param r Desired rank.
+#' @param p Order of AR process.
+#' @param L Window length.
+#' @param alpha Parameter for Cadzow weights search
+#' @param k Maximum iteration of AR parameters estimation
+#' @param ar_coefs_epsilon AR coefficients threshold
+#' @param initial_ar_coefs Initial autoregression coefficients.
+#' @param debug Debug mode on/off switch.
+#' @param envelope Optional noise envelope.
+#' @param compensated Use Compensated Horner Scheme in MGN algorithm?
+#' @param set_seed Seed function for deterministic SVD decomposition
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Object of class "hlra" containing "signal" field, which is result of optimization.
+#' @examples
+#' library(Rssa)
+#' data("USUnemployment")
+#' series <- USUnemployment[, 2]
+#' series <- series[!is.na(series)]
+#' x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
+#' plot(x$signal, type = "b")
 hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
                     initial_ar_coefs = NULL, debug = FALSE,
@@ -325,7 +407,28 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
     return(signal_obj)
 }
 
-tune_hlra <- function(series, r_range = 1:15, p_range = 0:3, 
+#' Tune parameters of HLRA problem.
+#'
+#' @param series Source time series, numeric vector or list of numeric vectors (may contain NA's)
+#' @param r_range Possible values of time series rank.
+#' @param p_range Possible values of order of AR process.
+#' @param L Window length.
+#' @param alpha Parameter for Cadzow weights search
+#' @param envelope Optional noise envelope.
+#' @param set_seed Seed function for deterministic SVD decomposition
+#' @param cluster Optional SNOW cluster for parallel computing
+#' @param initial_ar_coefs Initial autoregression coefficients.
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Data frame of class "hlra_tune" containing Bayesian Information Criterion (BIC) for each model.
+#' @examples
+#' library(Rssa)
+#' data("USUnemployment")
+#' seedf <- function() set.seed(15)
+#' series <- USUnemployment[, 2]
+#' series <- series[!is.na(series)]
+#' bic_data <- tune_hlra(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
+#' plot(bic_data)
+tune_hlra <- function(series, r_range = 1:15, p_range = 0:3,
                       L = default_L(series), alpha = 0.1,
                       envelope = unit_envelope(series), set_seed = NULL,
                       cluster = NULL, initial_ar_coefs = NULL, additional_pars = list()) {
