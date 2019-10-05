@@ -22,5 +22,3 @@ plot(answer$signal)
 answer <- hlra_mgn(series_with_gap, c(.5, .3), debug = T)
 plot(answer$signal)
 print(answer$signal)
-
-hlra_mgn(list(c(1, -3, 3, -1), c(1, -2, 1)), c(.1, .5), sylvester_problem = TRUE, debug = TRUE)

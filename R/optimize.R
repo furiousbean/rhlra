@@ -915,14 +915,18 @@ mgn <- function(this, series, signal, r, weights,
                    col = c("black", "blue", "red"), lty = 1:3)
         }
 
+        if (is.null(signal)) {
+            signal <- initial_best_signal
+        }
+
         if (!is.list(series)) {
             draw_full_plot(N, source_series, best_signal, signal, initial_best_signal)
         } else {
             mapply(draw_full_plot, N, source_series, best_signal, signal, initial_best_signal)
         }
 
-        plot(dists/sqrt(sum(N)), type = "b", main = "Fisher Scoring Distance", xlab = "iteration",
-            ylab = "Mean distance")
+        plot(polarity_mult * dists/sqrt(sum(N)), type = "b", main = "Normalized objective function", xlab = "iteration",
+            ylab = "Value")
 
     }
 

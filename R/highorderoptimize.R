@@ -28,17 +28,17 @@ default_L <- function(series) {
     }
 }
 
-hlra_mgn_default_chol <- function(series) {
-    make_series_01_vector <- function(s) {
-        answer <- rep(1, length(s))
+hlra_mgn_default_chol <- function(series, weights = rep(1, length(series))) {
+    make_series_01_vector <- function(s, weight) {
+        answer <- rep(weight, length(s))
         answer[is.na(s)] <- 0
         list(answer)
     }
 
     if (!is.list(series)) {
-        return(band_mat_from_diags(make_series_01_vector(series)))
+        return(band_mat_from_diags(make_series_01_vector(series, weights)))
     } else {
-        return(sapply_ns(series, function(s) { band_mat_from_diags(make_series_01_vector(s)) }))
+        return(sapply_ns(seq_along(series), function(i) { band_mat_from_diags(make_series_01_vector(series[[i]], weights[i])) }))
     }
 }
 
@@ -123,8 +123,7 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 #' plot(x$signal, type = "b")
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
-                     debug = FALSE, compensated = TRUE,
-                     sylvester_problem = FALSE, additional_pars = list()) {
+                     debug = FALSE, compensated = TRUE, additional_pars = list()) {
 
     obj <- list()
 
@@ -152,14 +151,79 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
                          weights = weights,
                          weights_chol = weights_chol,
                          glrr_initial = initial_glrr,
-                         debug = debug,
-                         sylvester_problem = sylvester_problem)
+                         debug = debug)
 
     signal_obj <- do.call(mgn, expand_pars_list(mgn_call_list, mgn_add_pars_names, additional_pars))
 
     classes <- c(classes, "hlra")
 
     class(signal_obj) <- classes
+
+    return(signal_obj)
+}
+
+#' Find GCD of two polynomials using Modified Gauss-Newton Algorithm (i.e. Sylvester LRA).
+#'
+#' @param polynoms Source polynomials, numeric vector or list of numeric vectors
+#' @param initial_gcd Initial GCD vector, which is non-null numeric vector of length more than 1.
+#' @param poly_weights Optional vector of weight of each polynomial.
+#' @param debug Debug mode on/off switch.
+#' @param compensated Use Compensated Horner Scheme in MGN algorithm?
+#' @param additional_pars Additional parameters for inner optimizers.
+#' @return Object of class "hlra_sylvester" containing "gcd" field, which is result of optimization.
+#' @examples
+#' x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), c(.1, .5))
+#' print(x$glrr)
+hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
+                     debug = FALSE, compensated = TRUE,
+                     additional_pars = list()) {
+
+    obj <- list()
+
+    classes <- character(0)
+
+    if (!is.null(poly_weights)) {
+        weights_chol = hlra_mgn_default_chol(polynoms, sqrt(poly_weights))
+    } else {
+        weights_chol = hlra_mgn_default_chol(polynoms)
+    }
+
+    if (!is.list(polynoms)) {
+        classes <- c(classes, "1d")
+    } else {
+        classes <- c(classes, "1dm")
+    }
+
+    if (compensated) {
+        classes <- c(classes, "compensated")
+    }
+
+    class(obj) <- classes
+
+    r <- length(initial_gcd) - 1
+
+    mgn_call_list = list(this = obj,
+                         series = polynoms,
+                         signal = NULL,
+                         r = r,
+                         weights = NULL,
+                         weights_chol = weights_chol,
+                         glrr_initial = initial_gcd,
+                         debug = debug,
+                         sylvester_problem = TRUE)
+
+    signal_obj <- do.call(mgn, expand_pars_list(mgn_call_list, mgn_add_pars_names, additional_pars))
+
+    classes <- c(classes, "hlra_sylvester")
+
+    class(signal_obj) <- classes
+
+    names(signal_obj)[names(signal_obj) == "glrr"] <- "gcd"
+    names(signal_obj)[names(signal_obj) == "noise"] <- "approximation"
+    names(signal_obj)[names(signal_obj) == "signal"] <- "residual"
+
+    signal_obj["noise_norm"] <- NULL
+    signal_obj$gcd <- signal_obj$gcd / sqrt(sum(signal_obj$gcd ^ 2))
 
     return(signal_obj)
 }
