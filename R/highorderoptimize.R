@@ -28,9 +28,13 @@ default_L <- function(series) {
     }
 }
 
-hlra_mgn_default_chol <- function(series, weights = rep(1, length(series))) {
+hlra_mgn_default_chol <- function(series, weights = 1) {
+    if (is.list(series) && length(weights) == 1) {
+        weights <- rep(weights, length(series))
+    }
+
     make_series_01_vector <- function(s, weight) {
-        answer <- rep(weight, length(s))
+        answer <- rep(weight[1], length(s))
         answer[is.na(s)] <- 0
         list(answer)
     }
@@ -492,7 +496,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 #' seedf <- function() set.seed(15)
 #' series <- USUnemployment[, 2]
 #' series <- series[!is.na(series)]
-#' bic_data <- tune_hlra(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
+#' bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
 #' plot(bic_data)
 hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,
                       L = default_L(series), alpha = 0.1,

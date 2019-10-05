@@ -42,6 +42,6 @@ data("USUnemployment")
 seedf <- function() set.seed(15)
 series <- USUnemployment[, 2]
 series <- series[!is.na(series)]
-bic_data <- tune_hlra(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
+bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
 plot(bic_data)
 }
