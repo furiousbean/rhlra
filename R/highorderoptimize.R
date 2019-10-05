@@ -3,7 +3,7 @@
 #' TODO
 #' The foo package provides three categories of important functions:
 #' foo, bar and baz.
-#' 
+#'
 #' @section Foo functions:
 #' The foo functions ...
 #'
@@ -38,7 +38,7 @@ hlra_mgn_default_chol <- function(series) {
     if (!is.list(series)) {
         return(band_mat_from_diags(make_series_01_vector(series)))
     } else {
-        return(sapply_ns(band_mat_from_diags, make_series_01_vector(series)))
+        return(sapply_ns(series, function(s) { band_mat_from_diags(make_series_01_vector(s)) }))
     }
 }
 
@@ -123,7 +123,8 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 #' plot(x$signal, type = "b")
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
-                     debug = FALSE, compensated = TRUE, additional_pars = list()) {
+                     debug = FALSE, compensated = TRUE,
+                     sylvester_problem = FALSE, additional_pars = list()) {
 
     obj <- list()
 
@@ -151,7 +152,8 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
                          weights = weights,
                          weights_chol = weights_chol,
                          glrr_initial = initial_glrr,
-                         debug = debug)
+                         debug = debug,
+                         sylvester_problem = sylvester_problem)
 
     signal_obj <- do.call(mgn, expand_pars_list(mgn_call_list, mgn_add_pars_names, additional_pars))
 

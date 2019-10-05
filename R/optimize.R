@@ -16,7 +16,7 @@ simple_expm <- function(m, pow) {
 }
 
 hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order = 4,
-                        igapfill_error_bound = 1e-2, igapfill_it_limit = 100, debug = TRUE, 
+                        igapfill_error_bound = 1e-2, igapfill_it_limit = 100, debug = TRUE,
                         set_seed = NULL, additional_pars = list()) {
     if (!is.null(set_seed)) {
         set_seed()
@@ -634,43 +634,74 @@ weighted_project_onto_zspace_coef <- function(this, series, zspace, chol_weights
 
 prepare_find_step <- function(obj, ...) UseMethod("prepare_find_step")
 
-prepare_find_step.1d <- function(this, signal, series, r, j, zspace_pack, weights_chol) {
+prepare_find_step.1d <- function(this, signal, series, r, j, zspace_pack, weights_chol,
+                                 sylvester_problem) {
     noise <- series - signal
     N <- length(series)
 
     K <- N - r
 
-    pseudograd <- Re(get_pseudograd(this, N, zspace_pack, signal, j))
+    pseudograd <- NULL
+
+    if (!sylvester_problem) {
+        pseudograd <- Re(get_pseudograd(this, N, zspace_pack, signal, j))
+    } else {
+        d_res <- as.numeric(deconv(as.numeric(noise), as.numeric(zspace_pack$glrr))$q)
+        indices <- 1:(r+1)
+        indices <- indices[-j]
+        pseudograd <- sapply(indices, function(i) {
+            grad <- complex(N)
+            grad[i:(i + K - 1)] <- d_res
+            grad
+        })
+    }
+
     pseudograd_minus <- sapply(1:r, function(i)
         weighted_project_onto_zspace_qr(Re(pseudograd[, i]), zspace_pack$qrobj,
                                         zspace_pack$basis, weights_chol))
-    pseudograd <- pseudograd - pseudograd_minus
+
+    if (!sylvester_problem) {
+        pseudograd <- pseudograd - pseudograd_minus
+    } else {
+        pseudograd <- pseudograd_minus
+    }
 
     list(pseudograd = pseudograd, noise = noise)
 }
 
-prepare_find_step.1dm <- function(this, signal, series, r, j, zspace_pack, weights_chol) {
-    noise <- mapply("-", series, signal, SIMPLIFY = FALSE)
-    Ns <- sapply(series, length)
-    Ks <- Ns - r
+prepare_find_step.1dm <- function(this, signal, series, r, j, zspace_pack, weights_chol,
+                                  sylvester_problem) {
+    noise <- list()
+    metathis <- this
+    class(metathis) <- class(metathis)[class(metathis) != '1dm']
+    class(metathis) <- append(class(metathis), "1d")
+
     pseudograd <- sapply_ns(seq_along(series), function(k) {
-        pseudograd_cur <- Re(get_pseudograd(this, Ns[[k]], zspace_pack[[k]], signal[[k]], j))
-        pseudograd_minus <- sapply(1:r, function(i)
-            weighted_project_onto_zspace_qr(Re(pseudograd_cur[, i]), zspace_pack[[k]]$qrobj,
-                                            zspace_pack[[k]]$basis, weights_chol[[k]]))
-        pseudograd_cur - pseudograd_minus
+        pfs_1d <- prepare_find_step(metathis, signal[[k]], series[[k]], r, j,
+                                    zspace_pack[[k]], weights_chol[[k]],
+                                    sylvester_problem)
+        noise[[k]] <<- pfs_1d$noise
+        pfs_1d$pseudograd
     })
 
     list(pseudograd = pseudograd, noise = noise)
 }
 
-find_step <- function(this, signal, series, glrr, zspace_pack, weights_chol, debug = FALSE, ...) {
+find_step <- function(this, signal, series, glrr, zspace_pack, weights_chol, debug = FALSE,
+                      sylvester_problem, ...) {
     r <- length(glrr) - 1
     j <- which.max(abs(glrr))
 
-    prepare_obj <- prepare_find_step(this, signal, series, r, j, zspace_pack, weights_chol)
+    prepare_obj <- prepare_find_step(this, signal, series, r, j, zspace_pack, weights_chol,
+                                     sylvester_problem)
 
-    used_coefs <- weighted_project_onto_zspace_coef(this, prepare_obj$noise,
+    obj_for_coefs <- prepare_obj$noise
+
+    if (sylvester_problem) {
+        obj_for_coefs <- signal
+    }
+
+    used_coefs <- weighted_project_onto_zspace_coef(this, obj_for_coefs,
         prepare_obj$pseudograd, weights_chol)
 
     ans <- numeric(r+1)
@@ -756,7 +787,10 @@ mgn <- function(this, series, signal, r, weights,
                                mgn_it_limit = 100,
                                mgn_j_limit = 4, debug = FALSE,
                                mgn_max_step = 1,
-                               glrr_initial = NULL, weights_chol = NULL, ...) {
+                               glrr_initial = NULL,
+                               weights_chol = NULL,
+                               sylvester_problem = FALSE,
+                               ...) {
     #MGN
     cur_glrr <- NA
     best_signal <- NA
@@ -772,6 +806,12 @@ mgn <- function(this, series, signal, r, weights,
         cur_glrr <- get_glrr_from_nonlrf_series(this, signal, r)
     } else {
         cur_glrr <- glrr_initial
+    }
+
+    polarity_mult <- 1
+
+    if (sylvester_problem) {
+        polarity_mult <- -1
     }
 
     zspace_pack <- get_zspace_pack(this, N, cur_glrr, weights_chol)
@@ -791,7 +831,7 @@ mgn <- function(this, series, signal, r, weights,
 
         if (coef > mgn_search_threshold) {
             #closer to the solution than previous best_signal
-            return(inner_product(minus(best_signal, signal),
+            return(polarity_mult * inner_product(minus(best_signal, signal),
                 plus(signal, minus(best_signal, mult(series, 2)))) > 0)
         }
         else {
@@ -822,7 +862,7 @@ mgn <- function(this, series, signal, r, weights,
         step <- NA
         tryCatch({step <- find_step(this, signal = best_signal, series = series, glrr = cur_glrr,
                                         zspace_pack = zspace_pack, weights_chol = weights_chol,
-                                        debug = debug, ...)},
+                                        debug = debug, sylvester_problem = sylvester_problem, ...)},
                  warning = function(x) {print(x)})
 
         if (any(is.na(step))) break
@@ -917,7 +957,7 @@ fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL, additional_pars
                                   debug = debug,
                                   additional_pars = additional_pars)
 
-        result <- do.call(hlra_igapfill, 
+        result <- do.call(hlra_igapfill,
             expand_pars_list(igapfill_call_list, igapfill_add_pars_names, additional_pars))
 
         if (debug) cat("done\n")
