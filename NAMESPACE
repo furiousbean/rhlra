@@ -3,7 +3,6 @@ useDynLib(rhlra)
 import(svd)
 import(Matrix)
 import(snow)
-importFrom(pracma, deconv)
 
 export(default_L)
 export(hlra_mgn_default_chol)

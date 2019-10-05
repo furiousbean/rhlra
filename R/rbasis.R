@@ -1,5 +1,6 @@
 eval_basis <- function(obj, ...) UseMethod("eval_basis")
 eval_pseudograd <- function(obj, ...) UseMethod("eval_pseudograd")
+eval_sylvester_grad <- function(obj, ...) UseMethod("eval_sylvester_grad")
 eval_tangent_basis <- function(obj, ...) UseMethod("eval_tangent_basis")
 
 eval_basis.default <- function(this, N, glrr) {
@@ -52,6 +53,23 @@ eval_pseudograd.default <- function(this, N, glrr, signal, tau, basis_obj) {
 }
 
 eval_pseudograd.compensated <- eval_pseudograd.default
+
+eval_sylvester_grad.default <- function(this, N, glrr, signal, tau, basis_obj) {
+    N <- as.integer(N)
+    tau <- as.integer(tau)
+    glrr <- as.numeric(glrr)
+    dim(glrr) <- length(glrr)
+
+    signal <- as.numeric(signal)
+    dim(signal) <- length(signal)
+
+    r <- length(glrr) - 1
+
+    result <- .Call("eval_sylvester_gradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
+    as.complex(result)
+}
+
+eval_sylvester_grad.compensated <- eval_sylvester_grad.default
 
 eval_tangent_basis.default <- function(this, N, glrr) {
     N <- as.integer(N)

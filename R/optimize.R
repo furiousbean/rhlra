@@ -646,12 +646,14 @@ prepare_find_step.1d <- function(this, signal, series, r, j, zspace_pack, weight
     if (!sylvester_problem) {
         pseudograd <- Re(get_pseudograd(this, N, zspace_pack, signal, j))
     } else {
-        d_res <- as.numeric(deconv(as.numeric(noise), as.numeric(zspace_pack$glrr))$q)
+        quotient <- Re(eval_sylvester_grad(this, N, zspace_pack$glrr,
+                                           as.numeric(noise), j, zspace_pack)[1:K])
+
         indices <- 1:(r+1)
         indices <- indices[-j]
         pseudograd <- sapply(indices, function(i) {
             grad <- complex(N)
-            grad[i:(i + K - 1)] <- d_res
+            grad[i:(i + K - 1)] <- quotient
             grad
         })
     }

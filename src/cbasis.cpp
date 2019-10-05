@@ -8,6 +8,7 @@
 #include "calculate_basis.h"
 #include "calculate_tangent_basis.h"
 #include "calculate_pseudograd.h"
+#include "calculate_sylvester_grad.h"
 
 SEXP eval_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     int N = INTEGER(Nexp)[0];
@@ -76,6 +77,31 @@ SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
     return xexp;
 }
 
+SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp,
+    SEXP AFexp,
+    SEXP ALPHAexp,
+    SEXP TAUexp,
+    SEXP SIGNALexp) {
+    int N = INTEGER(Nexp)[0];
+    int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
+    int r = size - 1;
+    int tau = INTEGER(TAUexp)[0] - 1;
+
+    SEXP xexp = PROTECT(allocVector(CPLXSXP, N));
+
+    CalculateSylvesterGrad<double> cb(N, r, REAL(GLRRexp),
+                                      (std::complex<double>*)COMPLEX(AFexp),
+                                      (double*)REAL(ALPHAexp),
+                                      tau,
+                                      (double*)REAL(SIGNALexp),
+                                      (std::complex<double>*)COMPLEX(xexp));
+
+    cb.doWork();
+    UNPROTECT(1);
+
+    return xexp;
+}
+
 SEXP eval_tangent_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     int N = INTEGER(Nexp)[0];
     int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
@@ -121,6 +147,18 @@ extern "C" {
         SEXP TAUexp,
         SEXP SIGNALexp) {
         return eval_pseudograd(Nexp, GLRRexp,
+        AFexp,
+        ALPHAexp,
+        TAUexp,
+        SIGNALexp);
+    }
+
+    SEXP eval_sylvester_gradC(SEXP Nexp, SEXP GLRRexp,
+        SEXP AFexp,
+        SEXP ALPHAexp,
+        SEXP TAUexp,
+        SEXP SIGNALexp) {
+        return eval_sylvester_grad(Nexp, GLRRexp,
         AFexp,
         ALPHAexp,
         TAUexp,
