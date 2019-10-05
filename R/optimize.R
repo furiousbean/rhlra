@@ -931,7 +931,7 @@ mgn <- function(this, series, signal, r, weights,
     }
 
     # stop()
-    list(signal = best_signal, glrr = cur_glrr, it = it, dists = dists,
+    list(signal = best_signal, glrr = cur_glrr, it = it, dists = polarity_mult * dists,
         noise = minus(series, best_signal),
         noise_norm = inner_product(minus(series, best_signal), minus(series, best_signal)))
 }

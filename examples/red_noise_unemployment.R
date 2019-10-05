@@ -17,7 +17,7 @@ envelope <- reconstruct(ssa(series, L = 80), groups = list(1:1))[[1]]
 
 cl <- makeCluster(getOption("cl.cores", 8))
 
-bic_data <- tune_hlra(series, r_range = 1:16, p_range = 0:3,
+bic_data <- hlra_tune(series, r_range = 1:16, p_range = 0:3,
                           alpha = alpha, cluster = cl,
                           initial_ar_coefs = c(.9), set_seed = seedf)
 

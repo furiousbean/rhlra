@@ -7,7 +7,7 @@ true_series <- series
 series[10:49] <- NA
 
 # раскомментировать для построения картинки с BIC
-# bic_data <- tune_hlra(series)
+# bic_data <- hlra_tune(series)
 # plot(bic_data)
 # plot(bic_data[bic_data$p > 0 & bic_data$r > 8, ])
 # stop()

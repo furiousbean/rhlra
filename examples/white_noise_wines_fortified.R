@@ -7,7 +7,7 @@ series <- series[!is.na(series)]
 
 # раскомментировать для построения картинки с BIC
 
-bic_data <- tune_hlra(series)
+bic_data <- hlra_tune(series)
 plot(bic_data)
 plot(bic_data[bic_data$r > 10, ])
 

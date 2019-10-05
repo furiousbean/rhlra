@@ -4,7 +4,7 @@ data <- read.table("births3.ctu", sep = ",")
 series <- as.numeric(data$V1)
 
 # раскомментировать для построения картинки с BIC
-# bic_data <- tune_hlra(series, r_range = 1:16, p_range = 0:2,
+# bic_data <- hlra_tune(series, r_range = 1:16, p_range = 0:2,
 #                           alpha = 0.3)
 # plot(bic_data)
 # plot(bic_data[bic_data$p > 0 & bic_data$r > 10, ])

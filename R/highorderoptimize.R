@@ -173,7 +173,7 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 #' @return Object of class "hlra_sylvester" containing "gcd" field, which is result of optimization.
 #' @examples
 #' x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), c(.1, .5))
-#' print(x$glrr)
+#' print(x$gcd)
 hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
                      debug = FALSE, compensated = TRUE,
                      additional_pars = list()) {
@@ -494,7 +494,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 #' series <- series[!is.na(series)]
 #' bic_data <- tune_hlra(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
 #' plot(bic_data)
-tune_hlra <- function(series, r_range = 1:15, p_range = 0:3,
+hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,
                       L = default_L(series), alpha = 0.1,
                       envelope = unit_envelope(series), set_seed = NULL,
                       cluster = NULL, initial_ar_coefs = NULL, additional_pars = list()) {
