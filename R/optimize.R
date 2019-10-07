@@ -416,7 +416,8 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                            weights_mat, cadzow_epsilon = 1e-6,
                            cadzow_it_limit = 100, debug = FALSE,
                            cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
-                           cadzow_error_norm_rel = 1e-1, set_seed = NULL, ...) {
+                           cadzow_error_norm_rel = 1e-1, set_seed = NULL,
+                           sylvester_nulling = NULL, ...) {
 
     if (!is.null(set_seed)) {
         set_seed()
@@ -445,6 +446,18 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
                                             r, left_chol_mat, right_chol_mat, ...),
                                            left_chol_mat, right_chol_mat, weights_chol)
+        if (!is.null(sylvester_nulling)) {
+            proj <- sapply_ns(seq_along(proj), function(i) {
+                series <- proj[[i]]
+                null_len <- sylvester_nulling[i]
+                if (null_len > 0) {
+                    series[1:null_len] <- 0
+                    series[(length(series) - null_len + 1):length(series)] <- 0
+                }
+                series
+            })
+        }
+
         step <- glue(minus(proj, prev))
 
         last_steps <- cbind(last_steps, step)
@@ -651,6 +664,7 @@ prepare_find_step.1d <- function(this, signal, series, r, j, zspace_pack, weight
 
         indices <- 1:(r+1)
         indices <- indices[-j]
+
         pseudograd <- sapply(indices, function(i) {
             grad <- complex(N)
             grad[i:(i + K - 1)] <- quotient
@@ -1126,7 +1140,7 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             right_diag, series_for_cadzow = NULL,
                             use_mgn = TRUE, debug = FALSE,
                             envelope = unit_envelope(this, series), set_seed = NULL,
-                            additional_pars) {
+                            additional_pars, sylvester_nulling = NULL) {
     series_for_mgn <- series
 
     list2env(prepare_cadzow_with_mgn(this, series, L, r, coefs,
@@ -1139,7 +1153,8 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             right_chol_mat = right_chol_mat,
                             weights_mat = weights,
                             set_seed = set_seed,
-                            debug = debug)
+                            debug = debug,
+                            sylvester_nulling = sylvester_nulling)
 
     cadzow_data <- do.call(oblique_cadzow_eps,
                            expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))

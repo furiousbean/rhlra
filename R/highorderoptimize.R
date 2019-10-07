@@ -169,17 +169,19 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 #' Find GCD of two polynomials using Modified Gauss-Newton Algorithm (i.e. Sylvester LRA).
 #'
 #' @param polynoms Source polynomials, numeric vector or list of numeric vectors
-#' @param initial_gcd Initial GCD vector, which is non-null numeric vector of length more than 1.
+#' @param r Expected order of GCD
+#' @param initial_poly Initial approximation for GCD, which is non-null numeric vector of length more than 1.
 #' @param poly_weights Optional vector of weight of each polynomial.
+#' @param alpha Parameter for Cadzow weights search
 #' @param debug Debug mode on/off switch.
 #' @param compensated Use Compensated Horner Scheme in MGN algorithm?
 #' @param additional_pars Additional parameters for inner optimizers.
 #' @return Object of class "hlra_sylvester" containing "gcd" field, which is result of optimization.
 #' @examples
-#' x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), c(.1, .5))
+#' x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), 1)
 #' print(x$gcd)
-hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
-                     debug = FALSE, compensated = TRUE,
+hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL,
+                     alpha = 0.1, debug = FALSE, compensated = TRUE,
                      additional_pars = list()) {
 
     obj <- list()
@@ -193,8 +195,22 @@ hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
     }
 
     if (!is.list(polynoms)) {
+        if (is.null(initial_poly)) {
+            stop("You must provide initial approximation of GCD for this kind of problem")
+        }
+
+        if (any(is.na(polynoms))) {
+            stop("Input polynom must not contain NA's")
+        }
+
         classes <- c(classes, "1d")
     } else {
+        for (i in seq_along(polynoms)) {
+            if (any(is.na(polynoms[[i]]))) {
+                stop("Input polynoms must not contain NA's")
+            }
+        }
+
         classes <- c(classes, "1dm")
     }
 
@@ -204,7 +220,46 @@ hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
 
     class(obj) <- classes
 
-    r <- length(initial_gcd) - 1
+    if (is.list(polynoms) && is.null(initial_poly)) {
+        poly_orders <- sapply(polynoms, length) - 1
+        L <- max(poly_orders) + min(poly_orders)
+        zero_trails <- L - sapply(polynoms, length)
+
+        input_for_cadzow <- sapply_ns(seq_along(polynoms), function(i)
+            c(numeric(zero_trails[i]), polynoms[[i]], numeric(zero_trails[i])))
+        if (is.null(poly_weights)) {
+            poly_weights <- rep(1, length(polynoms))
+        }
+
+        input_for_weights <- sapply_ns(seq_along(polynoms), function(i)
+            c(numeric(zero_trails[i]), rep(poly_weights[i], length(polynoms[[i]])), numeric(zero_trails[i])))
+
+        right_diag <- sapply(seq_along(polynoms),
+                             function(i) boxoptimw(length(input_for_cadzow[[i]]), L, alpha, input_for_weights[[i]]),
+                             simplify = FALSE)
+
+        additional_pars["svd_type"] <- "svd"
+
+        ar_coefs <- sapply(seq_along(polynoms), function(i) numeric(0), simplify = FALSE)
+
+        initial_sylvester_approx <- cadzow_with_mgn(obj, input_for_cadzow, L, L - r, ar_coefs,
+                                                    right_diag, debug = debug,
+                                                    series_for_cadzow = input_for_cadzow,
+                                                    envelope = input_for_weights,
+                                                    additional_pars = additional_pars,
+                                                    use_mgn = FALSE,
+                                                    sylvester_nulling = zero_trails)$signal
+
+        sylvmat <- do.call(cbind, sapply_ns(initial_sylvester_approx, function(x) traj_matrix(x, L)))
+        glrr_signals <- as.matrix(svd(sylvmat)$u[, (L-r+1):L], nrow = L)
+
+        glrr_signals_as_list <- sapply_ns(1:r, function(i) as.numeric(glrr_signals[, i]))
+        initial_poly <- get_glrr_from_nonlrf_series(obj, glrr_signals_as_list, r)
+
+        # print(initial_poly)
+    } else {
+        r <- length(initial_poly) - 1
+    }
 
     mgn_call_list = list(this = obj,
                          series = polynoms,
@@ -212,7 +267,7 @@ hlra_sylvester <- function(polynoms, initial_gcd, poly_weights = NULL,
                          r = r,
                          weights = NULL,
                          weights_chol = weights_chol,
-                         glrr_initial = initial_gcd,
+                         glrr_initial = initial_poly,
                          debug = debug,
                          sylvester_problem = TRUE)
 
