@@ -24,15 +24,14 @@ z <- rnorm(30)
 
 x <- x/sqrt(sum(x^2))
 
-sd <- 0.01
+sd <- 0.1
 
 first_poly <- ssa_convolve(x, y) + rnorm(29) * sd
 second_poly <- ssa_convolve(x, z) + rnorm(39) * sd
 
 r <- length(x) - 1
-result <- hlra_sylvester(list(first_poly, second_poly), r, debug = T,
-                         additional_pars = list(cadzow_scheme_order = 0,
-                                                cadzow_it_limit = 20))
+
+result <- hlra_sylvester(list(first_poly, second_poly), r, debug = T)
 
 print(x)
 print(result$gcd)

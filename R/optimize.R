@@ -433,9 +433,10 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
 
     last_steps <- empty_last_steps
 
+    full_norm2 <- inner_product(series, series)
+
     stop_criterion <- function(new, old) {
         change_norm2 <- inner_product(minus(new, old), minus(new, old))
-        full_norm2 <- inner_product(new, new)
         dists <<- c(dists, sqrt(change_norm2 / full_norm2))
         (change_norm2 / full_norm2) > cadzow_epsilon^2
     }
@@ -510,6 +511,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                 try_dist <- inner_product(minus(proj, prev), minus(proj, prev))
                 if (try_dist > fallback_dist) {
                     proj <- fallback_projection
+                    last_steps <- last_steps[, -1]
 
                     if (debug) {
                         cat("Doing fallback projection in Cadzow!\n")
@@ -531,7 +533,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         cat(sprintf("%d cadzow iterations done\n", it))
         if (length(dists) > 1) {
             plot(dists, type = "b", log = "y",
-                 main = "Relative residual eigenvalues")
+                 main = "Relative step lengths")
         }
     }
 
