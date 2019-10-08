@@ -440,6 +440,9 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         (change_norm2 / full_norm2) > cadzow_epsilon^2
     }
 
+    fallback_projection <- NULL
+    fallback_dist <- NULL
+
     while ((it == 0 || stop_criterion(proj, prev)) && it < cadzow_it_limit && r > 0) {
         it <- it + 1
         prev <- proj
@@ -493,10 +496,28 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                 v <- (last_steps[, -1] %*% v)[, cadzow_scheme_order]
 
                 last_steps <- empty_last_steps
+
+                fallback_projection <- proj
+                fallback_dist <- inner_product(minus(proj, prev), minus(proj, prev))
+
                 proj <- unglue(glue(prev) + v)
 
             } else {
                 last_steps <- last_steps[, -1]
+            }
+        } else {
+            if (!is.null(fallback_projection)) {
+                try_dist <- inner_product(minus(proj, prev), minus(proj, prev))
+                if (try_dist > fallback_dist) {
+                    proj <- fallback_projection
+
+                    if (debug) {
+                        cat("Doing fallback projection in Cadzow!\n")
+                    }
+                }
+
+                fallback_projection <- NULL
+                fallback_dist <- NULL
             }
         }
 
@@ -631,17 +652,9 @@ weighted_project_onto_zspace_coef_rot.1dm <- function(this, series, zspace, chol
 
 weighted_project_onto_zspace_coef <- function(this, series, zspace, chol_weights, tol = 1e-14) {
     list2env(weighted_project_onto_zspace_coef_rot(this, series, zspace, chol_weights), environment())
-
-    # qrobj <-qr(zspace_rot, LAPACK = TRUE)
-    # print(diag(qr.R(qrobj)))
-    # print(qrobj)
-    #
-    # print(as.numeric(qr.coef(qrobj, series_rot)))
-
     svdobj <- svd(zspace_rot)
 
     svdobj$d[svdobj$d < svdobj$d[1] * tol] <- Inf
-    # print(svdobj$d)
     svdobj$v %*% ((t(svdobj$u) %*% series_rot) / svdobj$d)
 }
 
