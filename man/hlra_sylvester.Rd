@@ -4,15 +4,20 @@
 \alias{hlra_sylvester}
 \title{Find GCD of two polynomials using Modified Gauss-Newton Algorithm (i.e. Sylvester LRA).}
 \usage{
-hlra_sylvester(polynoms, initial_gcd, poly_weights = NULL,
-  debug = FALSE, compensated = TRUE, additional_pars = list())
+hlra_sylvester(polynoms, r, initial_poly = NULL, poly_weights = NULL,
+  alpha = 0.1, debug = FALSE, compensated = TRUE,
+  additional_pars = list())
 }
 \arguments{
 \item{polynoms}{Source polynomials, numeric vector or list of numeric vectors}
 
-\item{initial_gcd}{Initial GCD vector, which is non-null numeric vector of length more than 1.}
+\item{r}{Expected order of GCD}
+
+\item{initial_poly}{Initial approximation for GCD, which is non-null numeric vector of length more than 1.}
 
 \item{poly_weights}{Optional vector of weight of each polynomial.}
+
+\item{alpha}{Parameter for Cadzow weights search}
 
 \item{debug}{Debug mode on/off switch.}
 
@@ -27,6 +32,6 @@ Object of class "hlra_sylvester" containing "gcd" field, which is result of opti
 Find GCD of two polynomials using Modified Gauss-Newton Algorithm (i.e. Sylvester LRA).
 }
 \examples{
-x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), c(.1, .5))
+x <- hlra_sylvester(list(c(1, -3, 3, -1), c(1, -2, 1)), 1)
 print(x$gcd)
 }
