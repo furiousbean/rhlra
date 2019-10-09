@@ -222,7 +222,8 @@ get_skewed_trmat <- function(obj, ...) UseMethod("get_skewed_trmat")
 get_skewed_trmat.1d <- function(this, series, L, left_chol, right_chol) {
     left_chol_mat <- as(left_chol, "Matrix")
     right_chol_mat <- as(right_chol, "Matrix")
-    as.matrix(t(left_chol_mat) %*% (traj_matrix(series, L) %*% right_chol_mat))
+    matrix(as.matrix(t(left_chol_mat) %*% (traj_matrix(series, L) %*% right_chol_mat)),
+           nrow = L)
 }
 
 get_skewed_trmat.1dm <- function(this, series, L, left_chol, right_chol) {
@@ -273,9 +274,15 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
 }
 
 hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
-                              left_chol, right_chol, svd_type = "trlan") {
+                              left_chol, right_chol, high_rank, svd_type = "trlan") {
 
     ops_for_hankel <- prepare_ops_for_hankel_svd(this, series, left_chol_mat, right_chol_mat)
+
+    desired_rank <- r
+
+    if (high_rank) {
+        desired_rank <- min(ops_for_hankel$L, ops_for_hankel$K)
+    }
 
     mymat <- extmat(ops_for_hankel$mul, ops_for_hankel$tmul,
         ops_for_hankel$L, ops_for_hankel$K)
@@ -284,8 +291,8 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
     lapack_svd <- function() {
         mymat <- get_skewed_trmat(this, series, ops_for_hankel$L, left_chol, right_chol)
 
-        result <- svd(mymat, nu = r, nv = r)
-        result$d <- result$d[1:r]
+        result <- svd(mymat, nu = desired_rank, nv = desired_rank)
+        result$d <- result$d[1:desired_rank]
         result
     }
 
@@ -294,10 +301,10 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
             result <- lapack_svd()
         } else {
             if (svd_type == "propack") {
-                result <- propack.svd(mymat, r)
+                result <- propack.svd(mymat, desired_rank)
             } else {
-                result <- trlan.svd(mymat, r)
-                V <- sapply(1:r, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
+                result <- trlan.svd(mymat, desired_rank)
+                V <- sapply(1:desired_rank, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
                 result$v <- V
             }
         }
@@ -317,8 +324,16 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
         }
     })
 
-    list(N = ops_for_hankel$N, L = ops_for_hankel$L,
+    answer <- list(N = ops_for_hankel$N, L = ops_for_hankel$L,
         d = result$d, u = result$u, v = result$v, r = r)
+
+    if (high_rank) {
+        answer$d <- answer$d[(desired_rank - r + 1):desired_rank]
+        answer$u <- matrix(answer$u[, (desired_rank - r + 1):desired_rank], nrow = answer$L)
+        answer$v <- matrix(answer$v[, (desired_rank - r + 1):desired_rank], nrow = answer$L)
+    }
+
+    answer
 }
 
 ssa_convolve <- function(u, v) {
@@ -428,7 +443,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                                cadzow_it_limit = 100, debug = FALSE,
                                cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
                                cadzow_error_norm_rel = 1e-1, set_seed = NULL,
-                               sylvester_nulling = NULL, ...) {
+                               sylvester_nulling = NULL, high_rank = FALSE, ...) {
 
     if (!is.null(set_seed)) {
         set_seed()
@@ -459,8 +474,14 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         it <- it + 1
         prev <- proj
         proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
-                                            r, left_chol_mat, right_chol_mat, left_chol, right_chol, ...),
+                                            r, left_chol_mat, right_chol_mat, left_chol, right_chol,
+                                            high_rank, ...),
                                            left_chol_mat, right_chol_mat, weights_chol)
+
+        if (high_rank) {
+            proj <- minus(prev, proj)
+        }
+
         if (!is.null(sylvester_nulling)) {
             proj <- sapply_ns(seq_along(proj), function(i) {
                 series <- proj[[i]]
@@ -1166,7 +1187,8 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             right_diag, series_for_cadzow = NULL,
                             use_mgn = TRUE, debug = FALSE,
                             envelope = unit_envelope(this, series), set_seed = NULL,
-                            additional_pars, sylvester_nulling = NULL) {
+                            additional_pars, sylvester_nulling = NULL,
+                            high_rank = FALSE) {
     series_for_mgn <- series
 
     list2env(prepare_cadzow_with_mgn(this, series, L, r, coefs,
@@ -1182,7 +1204,8 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             debug = debug,
                             sylvester_nulling = sylvester_nulling,
                             left_chol = left_chol,
-                            right_chol = right_chol)
+                            right_chol = right_chol,
+                            high_rank = high_rank)
 
     cadzow_data <- do.call(oblique_cadzow_eps,
                            expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))
@@ -1193,6 +1216,10 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
 
 
     if (use_mgn) {
+        if (high_rank) {
+            stop("High rank with MGN is unsuppored")
+        }
+
         mgn_call_list = list(this = this,
                              series = series_for_mgn,
                              signal = answer$signal,

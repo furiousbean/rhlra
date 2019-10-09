@@ -244,13 +244,14 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
 
         ar_coefs <- sapply(seq_along(polynoms), function(i) numeric(0), simplify = FALSE)
 
-        initial_sylvester_approx <- cadzow_with_mgn(obj, input_for_cadzow, L, L - r, ar_coefs,
+        initial_sylvester_approx <- cadzow_with_mgn(obj, input_for_cadzow, L, r, ar_coefs,
                                                     right_diag, debug = debug,
                                                     series_for_cadzow = input_for_cadzow,
                                                     envelope = input_for_weights,
                                                     additional_pars = additional_pars,
                                                     use_mgn = FALSE,
-                                                    sylvester_nulling = zero_trails)$signal
+                                                    sylvester_nulling = zero_trails,
+                                                    high_rank = TRUE)$signal
 
         sylvmat <- do.call(cbind, sapply_ns(initial_sylvester_approx, function(x) traj_matrix(x, L)))
         glrr_signals <- as.matrix(svd(sylvmat)$u[, (L-r+1):L], nrow = L)

@@ -14,7 +14,7 @@ series <- as.numeric(data$V1)
 r <- 11
 p <- 1
 
-answer <- hlra_ar(series, r = r, p = p, alpha = 0.1, debug = F)
+answer <- hlra_ar(series, r = r, p = p, alpha = 0.1)
 # answer <- hlra(series, r = r, alpha = 0.1, debug = TRUE)
 plot(as.numeric(series), type = "l")
 lines(answer$signal, col = "red")
