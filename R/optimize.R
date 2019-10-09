@@ -217,6 +217,19 @@ split_into_series_list <- function(v, splits) {
            SIMPLIFY = FALSE)
 }
 
+get_skewed_trmat <- function(obj, ...) UseMethod("get_skewed_trmat")
+
+get_skewed_trmat.1d <- function(this, series, L, left_chol, right_chol) {
+    left_chol_mat <- as(left_chol, "Matrix")
+    right_chol_mat <- as(right_chol, "Matrix")
+    as.matrix(t(left_chol_mat) %*% (traj_matrix(series, L) %*% right_chol_mat))
+}
+
+get_skewed_trmat.1dm <- function(this, series, L, left_chol, right_chol) {
+    do.call(cbind, sapply_ns(seq_along(series), function(i)
+        get_skewed_trmat.1d(this, series[[i]], L, left_chol[[i]], right_chol[[i]])))
+}
+
 prepare_ops_for_hankel_svd <- function(obj, ...) UseMethod("prepare_ops_for_hankel_svd")
 
 prepare_ops_for_hankel_svd.1d <- function(this, series, left_chol_mat, right_chol_mat) {
@@ -260,7 +273,7 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
 }
 
 hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
-                              svd_type = "trlan") {
+                              left_chol, right_chol, svd_type = "trlan") {
 
     ops_for_hankel <- prepare_ops_for_hankel_svd(this, series, left_chol_mat, right_chol_mat)
 
@@ -269,11 +282,8 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
     result <- NULL
 
     lapack_svd <- function() {
-        mymat <- sapply(1:ops_for_hankel$K, function(i) {
-                uv <- numeric(ops_for_hankel$K)
-                uv[i] <- 1
-                ops_for_hankel$mul(uv)
-                })
+        mymat <- get_skewed_trmat(this, series, ops_for_hankel$L, left_chol, right_chol)
+
         result <- svd(mymat, nu = r, nv = r)
         result$d <- result$d[1:r]
         result
@@ -413,11 +423,12 @@ prepare_oblique_cadzow_eps.1dm <- function(this, series, weights_mat) {
 }
 
 oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
-                           weights_mat, cadzow_epsilon = 1e-6,
-                           cadzow_it_limit = 100, debug = FALSE,
-                           cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
-                           cadzow_error_norm_rel = 1e-1, set_seed = NULL,
-                           sylvester_nulling = NULL, ...) {
+                               left_chol, right_chol,
+                               weights_mat, cadzow_epsilon = 1e-6,
+                               cadzow_it_limit = 100, debug = FALSE,
+                               cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
+                               cadzow_error_norm_rel = 1e-1, set_seed = NULL,
+                               sylvester_nulling = NULL, ...) {
 
     if (!is.null(set_seed)) {
         set_seed()
@@ -448,7 +459,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         it <- it + 1
         prev <- proj
         proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
-                                            r, left_chol_mat, right_chol_mat, ...),
+                                            r, left_chol_mat, right_chol_mat, left_chol, right_chol, ...),
                                            left_chol_mat, right_chol_mat, weights_chol)
         if (!is.null(sylvester_nulling)) {
             proj <- sapply_ns(seq_along(proj), function(i) {
@@ -1169,7 +1180,9 @@ cadzow_with_mgn <- function(this, series, L, r, coefs,
                             weights_mat = weights,
                             set_seed = set_seed,
                             debug = debug,
-                            sylvester_nulling = sylvester_nulling)
+                            sylvester_nulling = sylvester_nulling,
+                            left_chol = left_chol,
+                            right_chol = right_chol)
 
     cadzow_data <- do.call(oblique_cadzow_eps,
                            expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))
@@ -1213,7 +1226,9 @@ cadzow <- function(this, series, r, left_diags, right_diags,
                             right_chol_mat = right_chol_mat,
                             weights_mat = weights,
                             set_seed = set_seed,
-                            debug = debug)
+                            debug = debug,
+                            left_chol = left_chol,
+                            right_chol = right_chol)
 
     cadzow_data <- do.call(oblique_cadzow_eps,
                            expand_pars_list(cadzow_call_list, cadzow_add_pars_names, additional_pars))

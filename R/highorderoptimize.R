@@ -238,7 +238,9 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
                              function(i) boxoptimw(length(input_for_cadzow[[i]]), L, alpha, input_for_weights[[i]]),
                              simplify = FALSE)
 
-        additional_pars["svd_type"] <- "svd"
+        if (is.null(additional_pars$svd_type)) {
+            additional_pars$svd_type <- "svd"
+        }
 
         ar_coefs <- sapply(seq_along(polynoms), function(i) numeric(0), simplify = FALSE)
 
