@@ -62,7 +62,7 @@ hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order 
         last_steps <- cbind(last_steps, step)
 
         if (igapfill_scheme_order > 0 && ncol(last_steps) == igapfill_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:igapfill_scheme_order])
+            qrobj <- qr(last_steps[, 1:igapfill_scheme_order], tol = 1e-6)
             # coefs <- qr.coef(qrobj, step)
             # stepmat <- cbind(rbind(numeric(igapfill_scheme_order - 1), diag(igapfill_scheme_order - 1)), coefs)
             # print(coefs)
@@ -444,7 +444,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
     fallback_projection <- NULL
     fallback_dist <- NULL
 
-    while ((it == 0 || stop_criterion(proj, prev)) && it < cadzow_it_limit && r > 0) {
+    while ((it == 0 || stop_criterion(proj, prev)) && (it < cadzow_it_limit || !is.null(fallback_projection)) && r > 0) {
         it <- it + 1
         prev <- proj
         proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
@@ -467,7 +467,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         last_steps <- cbind(last_steps, step)
 
         if (cadzow_scheme_order > 0 && ncol(last_steps) == cadzow_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:cadzow_scheme_order])
+            qrobj <- qr(last_steps[, 1:cadzow_scheme_order], tol = 1e-6)
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
             stepmat[is.na(stepmat)] <- 0
 

@@ -24,7 +24,7 @@ z <- rnorm(30)
 
 x <- x/sqrt(sum(x^2))
 
-sd <- 0.1
+sd <- 0.01
 
 first_poly <- ssa_convolve(x, y) + rnorm(29) * sd
 second_poly <- ssa_convolve(x, z) + rnorm(39) * sd

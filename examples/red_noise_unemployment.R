@@ -13,8 +13,6 @@ seedf()
 
 alpha <- .8
 
-envelope <- reconstruct(ssa(series, L = 80), groups = list(1:1))[[1]]
-
 cl <- makeCluster(getOption("cl.cores", 8))
 
 bic_data <- hlra_tune(series, r_range = 1:16, p_range = 0:3,
@@ -37,8 +35,8 @@ p <- 3
 
 
 answer <- hlra_ar(series, r = r, p = p, alpha = alpha,
-                  initial_ar_coefs = c(.9), set_seed = seedf)
+                  initial_ar_coefs = c(.9), set_seed = seedf, debug = T)
 
 plot(as.numeric(series), type = "l")
 lines(answer$signal, col = "red")
-plot(answer$noise/envelope, main = "noise", type = "l")
+plot(answer$noise, main = "noise", type = "l")
