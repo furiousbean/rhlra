@@ -31,7 +31,7 @@ second_poly <- ssa_convolve(x, z) + rnorm(39) * sd
 
 r <- length(x) - 1
 
-result <- hlra_sylvester(list(first_poly, second_poly), r, debug = F)
+result <- hlra_sylvester(list(first_poly, second_poly), r)
 
 print(x)
 print(result$gcd)

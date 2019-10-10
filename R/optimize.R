@@ -217,18 +217,24 @@ split_into_series_list <- function(v, splits) {
            SIMPLIFY = FALSE)
 }
 
-get_skewed_trmat <- function(obj, ...) UseMethod("get_skewed_trmat")
+split_matrix_into_matrix_list <- function(m, splits) {
+    mapply(function(begin, end) matrix(m[begin:end, ], ncol = ncol(m)),
+           begin = splits[-length(splits)] + 1, end = splits[-1],
+           SIMPLIFY = FALSE)
+}
 
-get_skewed_trmat.1d <- function(this, series, L, left_chol, right_chol) {
+get_oblique_trmat <- function(obj, ...) UseMethod("get_oblique_trmat")
+
+get_oblique_trmat.1d <- function(this, series, L, left_chol, right_chol) {
     left_chol_mat <- as(left_chol, "Matrix")
     right_chol_mat <- as(right_chol, "Matrix")
     matrix(as.matrix(t(left_chol_mat) %*% (traj_matrix(series, L) %*% right_chol_mat)),
            nrow = L)
 }
 
-get_skewed_trmat.1dm <- function(this, series, L, left_chol, right_chol) {
+get_oblique_trmat.1dm <- function(this, series, L, left_chol, right_chol) {
     do.call(cbind, sapply_ns(seq_along(series), function(i)
-        get_skewed_trmat.1d(this, series[[i]], L, left_chol[[i]], right_chol[[i]])))
+        get_oblique_trmat.1d(this, series[[i]], L, left_chol[[i]], right_chol[[i]])))
 }
 
 prepare_ops_for_hankel_svd <- function(obj, ...) UseMethod("prepare_ops_for_hankel_svd")
@@ -273,8 +279,8 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
     list(N = N, L = L, K = K, mul = mul, tmul = tmul)
 }
 
-hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
-                              left_chol, right_chol, high_rank, svd_type = "trlan") {
+oblique_hankel_svd <- function(this, series, r, left_chol_mat, right_chol_mat,
+                               left_chol, right_chol, high_rank, svd_type = "trlan") {
 
     ops_for_hankel <- prepare_ops_for_hankel_svd(this, series, left_chol_mat, right_chol_mat)
 
@@ -284,14 +290,19 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
         desired_rank <- min(ops_for_hankel$L, ops_for_hankel$K)
     }
 
-    mymat <- extmat(ops_for_hankel$mul, ops_for_hankel$tmul,
-        ops_for_hankel$L, ops_for_hankel$K)
+    trmat <- NULL
+
+    if (svd_type != "svd") {
+        trmat <- extmat(ops_for_hankel$mul, ops_for_hankel$tmul,
+                        ops_for_hankel$L, ops_for_hankel$K)
+    }
+
     result <- NULL
 
     lapack_svd <- function() {
-        mymat <- get_skewed_trmat(this, series, ops_for_hankel$L, left_chol, right_chol)
+        trmat <- get_oblique_trmat(this, series, ops_for_hankel$L, left_chol, right_chol)
 
-        result <- svd(mymat, nu = desired_rank, nv = desired_rank)
+        result <- svd(trmat, nu = desired_rank, nv = desired_rank)
         result$d <- result$d[1:desired_rank]
         result
     }
@@ -301,9 +312,9 @@ hankel_svd_double <- function(this, series, r, left_chol_mat, right_chol_mat,
             result <- lapack_svd()
         } else {
             if (svd_type == "propack") {
-                result <- propack.svd(mymat, desired_rank)
+                result <- propack.svd(trmat, desired_rank)
             } else {
-                result <- trlan.svd(mymat, desired_rank)
+                result <- trlan.svd(trmat, desired_rank)
                 V <- sapply(1:desired_rank, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
                 result$v <- V
             }
@@ -342,60 +353,43 @@ ssa_convolve <- function(u, v) {
     Re(hlra_ifft(l_fft * r_fft))
 }
 
-prepare_diag_one_triple <- function(obj, ...) UseMethod("prepare_diag_one_triple")
+oblique_hankel_diag_averaging <- function(obj, ...) UseMethod("oblique_hankel_diag_averaging")
 
-prepare_diag_one_triple.1d <- function(this, reslist, left_chol_mat, right_chol_mat) {
-    N <- reslist$N
-    L <- reslist$L
-    K <- N - L + 1
-
-    function(u, v) generic_diag_one_triple(u, v, left_chol_mat, right_chol_mat)
-}
-
-prepare_diag_one_triple.1dm <- function(this, reslist, left_chol_mat, right_chol_mat) {
-    N <- reslist$N
-    L <- reslist$L
-    Ks <- N - L + 1
-    splits <- get_splits(sapply_ns(N, numeric))
-    Ksplits <- get_splits(sapply_ns(Ks, numeric))
-
-    function(u, v) {
-        vs <- split_into_series_list(v, Ksplits)
-        glue_series_lists(sapply_ns(seq_along(N), function(i) {
-            generic_diag_one_triple(u, vs[[i]],
-                                    left_chol_mat = left_chol_mat[[i]],
-                                    right_chol_mat = right_chol_mat[[i]])
-        }))
-    }
-}
-
-hankel_reweight <- function(obj, ...) UseMethod("hankel_reweight")
-
-hankel_reweight.1d <- function(this, weights_chol, allsum, N) {
-    as.numeric(solve(weights_chol, allsum, system = "A"))
-}
-
-hankel_reweight.1dm <- function(this, weights_chol, allsum, N) {
-    splits <- get_splits(sapply_ns(N, numeric))
-    allsums <- split_into_series_list(allsum, splits)
-
-    sapply_ns(seq_along(N), function(i) {
-            as.numeric(solve(weights_chol[[i]], allsums[[i]], system = "A"))})
-}
-
-hankel_diag_average_double <- function(this, reslist, left_chol_mat, right_chol_mat,
-                                       weights_chol) {
-    diag_one_triple <- prepare_diag_one_triple(this, reslist, left_chol_mat, right_chol_mat)
+oblique_hankel_diag_averaging.1d <- function(this, reslist, left_chol_mat, right_chol_mat,
+                                             weights_chol) {
+    diag_one_triple <- function(u, v) generic_diag_one_triple(u, v, left_chol_mat, right_chol_mat)
 
     stable_r <- min(reslist$r, length(reslist$d))
 
     diag_one_triple_by_index <- function(i) diag_one_triple(
         reslist$u[, i], reslist$v[, i]) * reslist$d[i]
 
-    allsum <- rowSums(sapply(1:stable_r,
-                             diag_one_triple_by_index))
+    allsum <- numeric(reslist$N)
 
-    hankel_reweight(this, weights_chol, allsum, reslist$N)
+    if (stable_r > 0) {
+        for (i in 1:stable_r) {
+            allsum <- allsum + diag_one_triple_by_index(i)
+        }
+    }
+
+    as.numeric(solve(weights_chol, allsum, system = "A"))
+}
+
+oblique_hankel_diag_averaging.1dm <- function(this, reslist, left_chol_mat, right_chol_mat,
+                                              weights_chol) {
+    N <- reslist$N
+    L <- reslist$L
+    Ks <- N - L + 1
+    Ksplits <- get_splits(sapply_ns(Ks, numeric))
+
+    vs <- split_matrix_into_matrix_list(reslist$v, Ksplits)
+
+    sapply_ns(seq_along(N), function(i) {
+        reslist1d <- list(N = N[[i]], L = L,
+                          d = reslist$d, u = reslist$u, v = vs[[i]], r = reslist$r)
+        oblique_hankel_diag_averaging.1d(this, reslist1d, left_chol_mat[[i]], right_chol_mat[[i]],
+                                         weights_chol[[i]])
+    })
 }
 
 generic_inner_product <- function(x, y, mat) sum(as.numeric(x * as.numeric(mat %*% as.numeric(y))))
@@ -473,10 +467,10 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
     while ((it == 0 || stop_criterion(proj, prev)) && (it < cadzow_it_limit || !is.null(fallback_projection)) && r > 0) {
         it <- it + 1
         prev <- proj
-        proj <- hankel_diag_average_double(this, hankel_svd_double(this, prev,
-                                            r, left_chol_mat, right_chol_mat, left_chol, right_chol,
-                                            high_rank, ...),
-                                           left_chol_mat, right_chol_mat, weights_chol)
+        proj <- oblique_hankel_diag_averaging(this, oblique_hankel_svd(this, prev,
+                                              r, left_chol_mat, right_chol_mat, left_chol,
+                                              right_chol, high_rank, ...),
+                                              left_chol_mat, right_chol_mat, weights_chol)
 
         if (high_rank) {
             proj <- minus(prev, proj)
