@@ -1,21 +1,13 @@
 simple_expm <- function(m, pow) {
-    if (pow == 0) {
-        return(diag(dim(m)[1]))
-    }
+    data <- eigen(m, FALSE, FALSE)
+    V <- data$vectors
+    l <- data$values ^ pow
 
-    if (pow == 1) {
-        return(m)
-    }
 
-    x <- Recall(m, pow %/% 2)
-    if (pow %% 2 == 1) {
-        return(x %*% x %*% m)
-    } else {
-        return(x %*% x)
-    }
+    Re(t(t(V) * l) %*% solve(V))
 }
 
-hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order = 4,
+hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order = 3,
                         igapfill_error_bound = 1e-2, igapfill_it_limit = 100, debug = TRUE,
                         set_seed = NULL, additional_pars = list()) {
     if (!is.null(set_seed)) {
@@ -62,7 +54,7 @@ hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order 
         last_steps <- cbind(last_steps, step)
 
         if (igapfill_scheme_order > 0 && ncol(last_steps) == igapfill_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:igapfill_scheme_order], tol = 1e-6)
+            qrobj <- qr(last_steps[, 1:igapfill_scheme_order])
             # coefs <- qr.coef(qrobj, step)
             # stepmat <- cbind(rbind(numeric(igapfill_scheme_order - 1), diag(igapfill_scheme_order - 1)), coefs)
             # print(coefs)
@@ -435,7 +427,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                                left_chol, right_chol,
                                weights_mat, cadzow_epsilon = 1e-6,
                                cadzow_it_limit = 100, debug = FALSE,
-                               cadzow_scheme_order = 4, cadzow_error_bound = 1e-2,
+                               cadzow_scheme_order = 3, cadzow_error_bound = 1e-2,
                                cadzow_error_norm_rel = 1e-1, set_seed = NULL,
                                sylvester_nulling = NULL, high_rank = FALSE, ...) {
 
@@ -493,7 +485,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         last_steps <- cbind(last_steps, step)
 
         if (cadzow_scheme_order > 0 && ncol(last_steps) == cadzow_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:cadzow_scheme_order], tol = 1e-6)
+            qrobj <- qr(last_steps[, 1:cadzow_scheme_order])
             stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
             stepmat[is.na(stepmat)] <- 0
 
