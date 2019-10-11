@@ -583,16 +583,22 @@ hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,
     data <- NULL
 
     if (!is.null(cluster)) {
-        clusterCall(cluster, function() {
+        if (!requireNamespace("snow", quietly = TRUE)) {
+            stop("Package \"snow\" needed for cluster computation to work. Please install it.",
+                 call. = FALSE)
+        }
+
+        snow::clusterCall(cluster, function() {
             library(svd)
             library(Matrix)
             library(rhlra)
         })
 
-        clusterExport(cluster, c("series", "L", "alpha", "envelope", "set_seed",
-            "initial_ar_coefs", "additional_pars"), envir = environment())
+        snow::clusterExport(cluster,
+                            c("series", "L", "alpha", "envelope", "set_seed",
+                              "initial_ar_coefs", "additional_pars"), envir = environment())
 
-        data <- parApply(cluster, input_mat, 1, obtain_bic_df_nonv)
+        data <- snow::parApply(cluster, input_mat, 1, obtain_bic_df_nonv)
     } else {
         data <- apply(input_mat, 1, obtain_bic_df_nonv)
     }
