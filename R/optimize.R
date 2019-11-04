@@ -427,8 +427,8 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                                left_chol, right_chol,
                                weights_mat, cadzow_epsilon = 1e-6,
                                cadzow_it_limit = 100, debug = FALSE,
-                               cadzow_scheme_order = 3, cadzow_error_bound = 1e-2,
-                               cadzow_error_norm_rel = 1e-1, set_seed = NULL,
+                               cadzow_scheme_order = 3, cadzow_error_bound = 1e-4,
+                               cadzow_error_norm_rel = 1e-2, set_seed = NULL,
                                sylvester_nulling = NULL, high_rank = FALSE, ...) {
 
     if (!is.null(set_seed)) {

@@ -25,7 +25,7 @@ plot(bic_data)
 plot(bic_data[bic_data$p > 0, ])
 
 answer <- hlra_ar(series, r = r, p = p, alpha = alpha,
-                  initial_ar_coefs = list(c(.9), c(.9)))
+                  initial_ar_coefs = list(c(.9), c(.9)), debug = T)
 
 # answer <- hlra_ar(series, r = r, p = p, alpha = .3, debug = TRUE,
 #                                    initial_coefs = c(.9))
