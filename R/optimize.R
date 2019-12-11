@@ -604,7 +604,7 @@ get_pseudograd <- function(this, N, zspace_pack, signal, j) {
 get_space_by_glrr <- function(this, N, glrr, glrr_2 = FALSE) {
     pre_answer <- get_comp_space_by_glrr(this, N, glrr, glrr_2 = glrr_2)
     if (glrr_2) {
-        v <- ssa_convolve(glrr, glrr)
+        glrr <- ssa_convolve(glrr, glrr)
     }
     r <- length(glrr) - 1
     j <- which.max(abs(glrr))

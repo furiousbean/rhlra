@@ -81,7 +81,7 @@ eval_tangent_basis.default <- function(this, N, glrr) {
     matrix(result, nrow = N)
 }
 
-eval_tangent_basis.compensated <- function(N, glrr) {
+eval_tangent_basis.compensated <- function(this, N, glrr) {
     N <- as.integer(N)
     glrr <- as.vector(glrr)
     dim(glrr) <- length(glrr)
