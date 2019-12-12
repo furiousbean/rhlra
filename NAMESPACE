@@ -18,3 +18,5 @@ export(get_matrix_weight_matrix)
 
 export(get_glrr_from_nonlrf_series.1d)
 export(get_space_by_glrr)
+export(ssa_convolve)
+export(trmat_indices)
