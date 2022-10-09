@@ -4,10 +4,18 @@
 \alias{hlra_tune}
 \title{Tune parameters of HLRA problem.}
 \usage{
-hlra_tune(series, r_range = 1:15, p_range = 0:3,
-  L = default_L(series), alpha = 0.1,
-  envelope = unit_envelope(series), set_seed = NULL, cluster = NULL,
-  initial_ar_coefs = NULL, additional_pars = list())
+hlra_tune(
+  series,
+  r_range = 1:15,
+  p_range = 0:3,
+  L = default_L(series),
+  alpha = 0.1,
+  envelope = unit_envelope(series),
+  set_seed = NULL,
+  cluster = NULL,
+  initial_ar_coefs = NULL,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{series}{Source time series, numeric vector or list of numeric vectors (may contain NA's)}
@@ -43,5 +51,5 @@ seedf <- function() set.seed(15)
 series <- USUnemployment[, 2]
 series <- series[!is.na(series)]
 bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
-plot(bic_data)
+plot.hlra_tune(bic_data)
 }

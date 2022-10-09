@@ -4,9 +4,15 @@
 \alias{hlra_mgn}
 \title{Perform Modified Gauss-Newton Algorithm.}
 \usage{
-hlra_mgn(series, initial_glrr, weights = NULL,
-  weights_chol = hlra_mgn_default_chol(series), debug = FALSE,
-  compensated = TRUE, additional_pars = list())
+hlra_mgn(
+  series,
+  initial_glrr,
+  weights = NULL,
+  weights_chol = hlra_mgn_default_chol(series),
+  debug = FALSE,
+  compensated = TRUE,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{series}{Source time series, numeric vector or list of numeric vectors (may contain NA's)}

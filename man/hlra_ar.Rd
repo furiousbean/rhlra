@@ -4,10 +4,21 @@
 \alias{hlra_ar}
 \title{Perform generic HLRA problem with unknown inverted autoregressive weights.}
 \usage{
-hlra_ar(series, r, p = 1, L = default_L(series), alpha = 0.1, k = p
-  * 4, ar_coefs_eps = 1e-07, initial_ar_coefs = NULL, debug = FALSE,
-  envelope = unit_envelope(series), compensated = TRUE,
-  set_seed = NULL, additional_pars = list())
+hlra_ar(
+  series,
+  r,
+  p = 1,
+  L = default_L(series),
+  alpha = 0.1,
+  k = p * 4,
+  ar_coefs_eps = 1e-07,
+  initial_ar_coefs = NULL,
+  debug = FALSE,
+  envelope = unit_envelope(series),
+  compensated = TRUE,
+  set_seed = NULL,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{series}{Source time series, numeric vector or list of numeric vectors (may contain NA's)}
@@ -48,5 +59,5 @@ data("USUnemployment")
 series <- USUnemployment[, 2]
 series <- series[!is.na(series)]
 x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-plot(x$signal, type = "b")
+plot(x$signal, type = "l")
 }

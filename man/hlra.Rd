@@ -4,9 +4,18 @@
 \alias{hlra}
 \title{Perform generic HLRA problem with inverted autoregressive weights.}
 \usage{
-hlra(series, r, L = default_L(series), ar_coefs = NULL, alpha = 0.1,
-  debug = FALSE, envelope = unit_envelope(series),
-  compensated = TRUE, set_seed = NULL, additional_pars = list())
+hlra(
+  series,
+  r,
+  L = default_L(series),
+  ar_coefs = NULL,
+  alpha = 0.1,
+  debug = FALSE,
+  envelope = unit_envelope(series),
+  compensated = TRUE,
+  set_seed = NULL,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{series}{Source time series, numeric vector or list of numeric vectors (may contain NA's)}

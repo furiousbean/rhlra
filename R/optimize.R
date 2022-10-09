@@ -1,14 +1,4 @@
-simple_expm <- function(m, pow) {
-    data <- eigen(m, FALSE, FALSE)
-    V <- data$vectors
-    l <- data$values ^ pow
-
-
-    Re(t(t(V) * l) %*% solve(V))
-}
-
-hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order = 3,
-                        igapfill_error_bound = 1e-2, igapfill_it_limit = 100, debug = TRUE,
+hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_it_limit = 100, debug = TRUE,
                         set_seed = NULL, additional_pars = list()) {
     if (!is.null(set_seed)) {
         set_seed()
@@ -21,83 +11,25 @@ hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_scheme_order 
 
     signal <- series
 
-    # print(mask)
-
     x <- rep(median(series, na.rm = TRUE), length(mask))
     prev <- NA
     series[mask] <- x
     dists <- numeric()
     dist <- 0
     step <- NA
-
-
     last_steps <- matrix(numeric(0), nrow = length(mask))
-    # all_its <- matrix(x, nrow = length(mask))
 
     it <- 0
 
     while (it < igapfill_it_limit && (is.na(prev) || sum(abs(prev - x)) > igapfill_eps)) {
-        # print(it)
-        # print(series)
         pseudoobj <- list()
         class(pseudoobj) <- "1d"
         L <- default_L(series)
 
         series <- hlra_ssa(pseudoobj, series, L, r, debug, set_seed, additional_pars)$signal
-        # print(series)
         prev <- x
         x <- series[mask]
-        step <- x - prev
-        # print(step)
-        # plot(step, type = "b")
         series <- signal
-        last_steps <- cbind(last_steps, step)
-
-        if (igapfill_scheme_order > 0 && ncol(last_steps) == igapfill_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:igapfill_scheme_order])
-            # coefs <- qr.coef(qrobj, step)
-            # stepmat <- cbind(rbind(numeric(igapfill_scheme_order - 1), diag(igapfill_scheme_order - 1)), coefs)
-            # print(coefs)
-
-            stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
-            stepmat[is.na(stepmat)] <- 0
-
-            gammas <- eigen(stepmat, FALSE, TRUE)$values
-            # print(stepmat)
-            # print(gammas)
-            gamma <- max(Mod(gammas))
-
-            basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
-
-            prev_norm <- sqrt(sum(last_steps[, igapfill_scheme_order]^2))
-            # print(error_norm)
-            if (gamma < 1) {
-                ls <- 0
-                rs <- 2^14
-                for (i in 1:14) {
-                    n <- (ls + rs) / 2;
-                    approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
-                    track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
-
-                    if (approx_error_est > track_length_est * igapfill_error_bound) {
-                        rs <- n;
-                    } else {
-                        ls <- n;
-                    }
-                }
-                # print(n)
-                v <- solve((stepmat - diag(igapfill_scheme_order)), (simple_expm(stepmat, n + 1) - diag(igapfill_scheme_order)))
-                v <- (last_steps[, -1] %*% v)[, igapfill_scheme_order]
-                x <- prev + v
-                last_steps <- matrix(numeric(0), nrow = length(mask))
-            } else {
-                last_steps <- last_steps[, -1]
-            }
-        }
-        # all_its <- cbind(all_its, x)
-        # print(x)
-        # print(mask)
-        # print(series)
         series[mask] <- x
         dist <- sum(abs(prev - x))
         dists <- c(dists, dist)
@@ -427,9 +359,8 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                                left_chol, right_chol,
                                weights_mat, cadzow_epsilon = 1e-6,
                                cadzow_it_limit = 100, debug = FALSE,
-                               cadzow_scheme_order = 3, cadzow_error_bound = 1e-4,
-                               cadzow_error_norm_rel = 1e-2, set_seed = NULL,
-                               sylvester_nulling = NULL, high_rank = FALSE, ...) {
+                               set_seed = NULL, sylvester_nulling = NULL,
+                               high_rank = FALSE, ...) {
 
     if (!is.null(set_seed)) {
         set_seed()
@@ -443,8 +374,6 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
 
     dists <- numeric(0)
 
-    last_steps <- empty_last_steps
-
     full_norm2 <- inner_product(series, series)
 
     stop_criterion <- function(new, old) {
@@ -453,10 +382,7 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         (change_norm2 / full_norm2) > cadzow_epsilon^2
     }
 
-    fallback_projection <- NULL
-    fallback_dist <- NULL
-
-    while ((it == 0 || stop_criterion(proj, prev)) && (it < cadzow_it_limit || !is.null(fallback_projection)) && r > 0) {
+    while ((it == 0 || stop_criterion(proj, prev)) && (it < cadzow_it_limit) && r > 0) {
         it <- it + 1
         prev <- proj
         proj <- oblique_hankel_diag_averaging(this, oblique_hankel_svd(this, prev,
@@ -479,68 +405,6 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
                 series
             })
         }
-
-        step <- glue(minus(proj, prev))
-
-        last_steps <- cbind(last_steps, step)
-
-        if (cadzow_scheme_order > 0 && ncol(last_steps) == cadzow_scheme_order + 1) {
-            qrobj <- qr(last_steps[, 1:cadzow_scheme_order])
-            stepmat <- as.matrix(qr.coef(qrobj, last_steps[, -1]))
-            stepmat[is.na(stepmat)] <- 0
-
-            gammas <- eigen(stepmat, FALSE, TRUE)$values
-            gamma <- max(Mod(gammas))
-
-            basic_error <- sqrt(sum((qr.resid(qrobj, step))^2))
-
-            prev_norm <- sqrt(sum(last_steps[, cadzow_scheme_order]^2))
-
-            if (gamma < 1 && basic_error/prev_norm < cadzow_error_norm_rel) {
-                ls <- 0
-                rs <- 2^14
-                for (i in 1:14) {
-                    n <- (ls + rs) / 2;
-                    approx_error_est <- basic_error * ((n + 1) - gamma * (1 - gamma^(n + 1))/(1 - gamma))/(1 - gamma)
-                    track_length_est <- prev_norm * (1 - gamma^(n + 1))/(1 - gamma)
-
-                    if (approx_error_est > track_length_est * cadzow_error_bound) {
-                        rs <- n;
-                    } else {
-                        ls <- n;
-                    }
-                }
-
-                v <- solve((stepmat - diag(cadzow_scheme_order)), (simple_expm(stepmat, n + 1) - diag(cadzow_scheme_order)))
-                v <- (last_steps[, -1] %*% v)[, cadzow_scheme_order]
-
-                last_steps <- empty_last_steps
-
-                fallback_projection <- proj
-                fallback_dist <- inner_product(minus(proj, prev), minus(proj, prev))
-
-                proj <- unglue(glue(prev) + v)
-
-            } else {
-                last_steps <- last_steps[, -1]
-            }
-        } else {
-            if (!is.null(fallback_projection)) {
-                try_dist <- inner_product(minus(proj, prev), minus(proj, prev))
-                if (try_dist > fallback_dist) {
-                    proj <- fallback_projection
-                    last_steps <- last_steps[, -1]
-
-                    if (debug) {
-                        cat("Doing fallback projection in Cadzow!\n")
-                    }
-                }
-
-                fallback_projection <- NULL
-                fallback_dist <- NULL
-            }
-        }
-
     }
 
     if (r == 0) {
@@ -632,14 +496,6 @@ get_glrr_from_nonlrf_series.1dm <- function(this, series, r) {
          sapply_ns(series, function(x) traj_matrix(x[!is.na(x)], L)))
     svd(trmat)$u[, L]
 }
-
-# weighted_project_onto_zspace <- function(series, zspace, weights) {
-#     real_part <- as.matrix(weights %*% Re(zspace))
-#     imag_part <- as.matrix(weights %*% Im(zspace))
-#     wpvs <- real_part + 1i * imag_part
-#     as.numeric(Re(zspace %*% solve(t(Conj(zspace)) %*% wpvs,
-#                                    t(Conj(zspace)) %*% as.numeric(weights %*% series))))
-# }
 
 weighted_project_rotate_basis <- function(zspace, chol_weights) {
     real_part <- as.matrix(chol_weights %*% Re(zspace))
