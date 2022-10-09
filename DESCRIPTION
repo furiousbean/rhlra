@@ -1,6 +1,6 @@
 Package: rhlra
 Type: Package
-Title: Hankel Low-Rank Approximation for R
+Title: Hankel Low-Rank Approximation in R
 Version: 0.0.2
 Author: Nikita Zvonarev
 Maintainer: Nikita Zvonarev <nikitazvonarev@gmail.com>
