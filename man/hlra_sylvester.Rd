@@ -4,9 +4,16 @@
 \alias{hlra_sylvester}
 \title{Find GCD of two polynomials using Modified Gauss-Newton Algorithm (i.e. Sylvester LRA).}
 \usage{
-hlra_sylvester(polynoms, r, initial_poly = NULL, poly_weights = NULL,
-  alpha = 0.1, debug = FALSE, compensated = TRUE,
-  additional_pars = list())
+hlra_sylvester(
+  polynoms,
+  r,
+  initial_poly = NULL,
+  poly_weights = NULL,
+  alpha = 0.1,
+  debug = FALSE,
+  compensated = TRUE,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{polynoms}{Source polynomials, numeric vector or list of numeric vectors}

@@ -3,15 +3,12 @@
 \docType{package}
 \name{rhlra}
 \alias{rhlra}
-\alias{rhlra-package}
 \title{rhlra: Hankel Low-Rank Approximation for R package.}
 \description{
-TODO
-The foo package provides three categories of important functions:
-foo, bar and baz.
+This package provides tools for solving Hankel Structured Low-Rank Approximation problems
 }
-\section{Foo functions}{
+\section{See Also}{
 
-The foo functions ...
+\code{\link{rhlra}}, \code{\link{rhlra_tune}}, \code{\link{rhlra_cadzow}}
 }
 

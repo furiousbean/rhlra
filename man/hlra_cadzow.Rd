@@ -4,9 +4,16 @@
 \alias{hlra_cadzow}
 \title{Perform Cadzow iterations.}
 \usage{
-hlra_cadzow(series, r, L = default_L(series), left_diags = NULL,
-  right_diags = NULL, debug = FALSE, set_seed = NULL,
-  additional_pars = list())
+hlra_cadzow(
+  series,
+  r,
+  L = default_L(series),
+  left_diags = NULL,
+  right_diags = NULL,
+  debug = FALSE,
+  set_seed = NULL,
+  additional_pars = list()
+)
 }
 \arguments{
 \item{series}{Source time series, numeric vector or list of numeric vectors (without NA's)}

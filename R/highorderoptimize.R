@@ -1,11 +1,9 @@
 #' rhlra: Hankel Low-Rank Approximation for R package.
 #'
-#' TODO
-#' The foo package provides three categories of important functions:
-#' foo, bar and baz.
+#' This package provides tools for solving Hankel Structured Low-Rank Approximation problems
 #'
-#' @section Foo functions:
-#' The foo functions ...
+#' @section See Also:
+#' \code{\link{rhlra}}, \code{\link{rhlra_tune}}, \code{\link{rhlra_cadzow}}
 #'
 #' @docType package
 #' @name rhlra
@@ -235,7 +233,7 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
             c(numeric(zero_trails[i]), rep(poly_weights[i], length(polynoms[[i]])), numeric(zero_trails[i])))
 
         right_diag <- sapply(seq_along(polynoms),
-                             function(i) boxoptimw(length(input_for_cadzow[[i]]), L, alpha, input_for_weights[[i]]),
+                             function(i) kloptimw(length(input_for_cadzow[[i]]), L, alpha, input_for_weights[[i]]),
                              simplify = FALSE)
 
         if (is.null(additional_pars$svd_type)) {
@@ -334,7 +332,7 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
     series_for_cadzow <- series
 
     if (!is.list(series)) {
-        right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
+        right_diag <- kloptimw(length(series), L, alpha, envelope^2)
 
         if (any(is.na(series))) {
             series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed,
@@ -343,7 +341,7 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
         classes <- c(classes, "1d")
     } else {
         right_diag <- sapply(seq_along(series),
-                             function(i) boxoptimw(length(series[[i]]), L, alpha, envelope[[i]]^2),
+                             function(i) kloptimw(length(series[[i]]), L, alpha, envelope[[i]]^2),
                              simplify = FALSE)
 
         for (i in seq_along(series)) {
@@ -400,7 +398,7 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 #' series <- USUnemployment[, 2]
 #' series <- series[!is.na(series)]
 #' x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-#' plot(x$signal, type = "b")
+#' plot(x$signal, type = "l")
 hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
                     initial_ar_coefs = NULL, debug = FALSE,
@@ -426,7 +424,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
     series_for_cadzow <- series
 
     if (!is.list(series)) {
-        right_diag <- boxoptimw(length(series), L, alpha, envelope^2)
+        right_diag <- kloptimw(length(series), L, alpha, envelope^2)
         K <- length(series) - L + 1
         if (any(is.na(series))) {
             series_for_cadzow <- fill_gaps(series[effective_mask(series)], r, debug, set_seed = set_seed,
@@ -435,7 +433,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
         classes <- c(classes, "1d")
     } else {
         right_diag <- sapply(seq_along(series),
-                             function(i) boxoptimw(length(series[[i]]), L, alpha, envelope[[i]]^2),
+                             function(i) kloptimw(length(series[[i]]), L, alpha, envelope[[i]]^2),
                              simplify = FALSE)
         Ks <- sapply(series, function(series) length(as.numeric(series))) - L + 1
         for (i in seq_along(series)) {
@@ -555,7 +553,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 #' series <- USUnemployment[, 2]
 #' series <- series[!is.na(series)]
 #' bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
-#' plot(bic_data)
+#' plot.hlra_tune(bic_data)
 hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,
                       L = default_L(series), alpha = 0.1,
                       envelope = unit_envelope(series), set_seed = NULL,
