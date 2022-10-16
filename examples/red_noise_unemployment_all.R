@@ -13,16 +13,16 @@ alpha = .8
 #alpha = 0.5 for r = 12-13
 #alpha = 0.8 for r = 14
 
-cl <- makeCluster(getOption("cl.cores", 8))
-
-bic_data <- hlra_tune(series, r_range = 1:16, p_range = 0:3,
-                      alpha = alpha, cluster = cl,
-                      initial_ar_coefs = list(c(.9), c(.9)))
-
-stopCluster(cl)
-
-plot(bic_data)
-plot(bic_data[bic_data$p > 0, ])
+# cl <- makeCluster(getOption("cl.cores", 8))
+#
+# bic_data <- hlra_tune(series, r_range = 1:16, p_range = 0:3,
+#                       alpha = alpha, cluster = cl,
+#                       initial_ar_coefs = list(c(.9), c(.9)))
+#
+# stopCluster(cl)
+#
+# plot(bic_data)
+# plot(bic_data[bic_data$p > 0, ])
 
 answer <- hlra_ar(series, r = r, p = p, alpha = alpha,
                   initial_ar_coefs = list(c(.9), c(.9)), debug = T)

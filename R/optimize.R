@@ -1,4 +1,4 @@
-hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_it_limit = 100, debug = TRUE,
+hlra_igapfill <- function(series, r, igapfill_epsilon = 1e-6, igapfill_it_limit = 100, debug = TRUE,
                         set_seed = NULL, additional_pars = list()) {
     if (!is.null(set_seed)) {
         set_seed()
@@ -6,8 +6,6 @@ hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_it_limit = 10
 
     mask <- is.na(series)
     mask <- (1:length(series))[mask]
-
-    igapfill_scheme_order <- min(igapfill_scheme_order, length(mask) - 1)
 
     signal <- series
 
@@ -21,7 +19,7 @@ hlra_igapfill <- function(series, r, igapfill_eps = 1e-6, igapfill_it_limit = 10
 
     it <- 0
 
-    while (it < igapfill_it_limit && (is.na(prev) || sum(abs(prev - x)) > igapfill_eps)) {
+    while (it < igapfill_it_limit && (anyNA(prev) || sum(abs(prev - x)) > igapfill_epsilon)) {
         pseudoobj <- list()
         class(pseudoobj) <- "1d"
         L <- default_L(series)
@@ -68,7 +66,7 @@ expand_by_mask <- function(series, signal) {
 sapply_ns <- function(...) sapply(..., simplify = FALSE)
 
 get_rev_row_form <- function(x) {
-    trip <- as(x, "dgTMatrix")
+    trip <- as(x, "TsparseMatrix")
 
     trip_i <- trip@i
     trip_j <- trip@j
@@ -1136,9 +1134,8 @@ hlra_ssa <- function(obj, series, L, r, debug, set_seed, additional_pars) {
 
 
 mgn_add_pars_names <- c("mgn_search_threshold", "mgn_it_limit", "mgn_j_limit", "mgn_max_step")
-cadzow_add_pars_names <- c("cadzow_epsilon", "cadzow_it_limit", "cadzow_scheme_order", "cadzow_error_bound",
-                           "cadzow_error_norm_rel", "svd_type")
-igapfill_add_pars_names <- c("igapfill_eps", "igapfill_it_limit", "igapfill_scheme_order", "igapfill_error_bound")
+cadzow_add_pars_names <- c("cadzow_epsilon", "cadzow_it_limit", "svd_type")
+igapfill_add_pars_names <- c("igapfill_epsilon", "igapfill_it_limit")
 
 expand_pars_list <- function(input_list, pars_names, additional_pars) {
     for (name in pars_names) {
