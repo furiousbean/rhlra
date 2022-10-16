@@ -3,7 +3,7 @@
 #' This package provides tools for solving Hankel Structured Low-Rank Approximation problems
 #'
 #' @section See Also:
-#' \code{\link{rhlra}}, \code{\link{rhlra_tune}}, \code{\link{rhlra_cadzow}}
+#' \code{\link{hlra}}, \code{\link{hlra_tune}}, \code{\link{hlra_cadzow}}, \code{\link{hlra_mgn}}.
 #'
 #' @docType package
 #' @name rhlra
