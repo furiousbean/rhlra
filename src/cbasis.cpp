@@ -18,12 +18,12 @@ SEXP eval_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     SEXP xexp = PROTECT(allocVector(CPLXSXP, N * (3 * r + 1) + 1 + r * r));
 
     CalculateBasis<double, COMPENSATED_HORNER, ORTHOGONALIZATION> cb(N, r, REAL(GLRRexp),
-        (std::complex<double>*)COMPLEX(xexp),
-        ((std::complex<double>*)COMPLEX(xexp)) + N * r,
-        ((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r),
-        ((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r + 1),
-        (double*)(((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r + 2)),
-        ((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r + 2) + 1);
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * r),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 1)),
+        reinterpret_cast<double*>(COMPLEX(xexp) + N * (2 * r + 2)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 2) + 1));
 
     cb.doWork();
     UNPROTECT(1);
@@ -39,11 +39,11 @@ SEXP eval_basis(SEXP Nexp, SEXP GLRRexp) {
     SEXP xexp = PROTECT(allocVector(CPLXSXP, N * (3 * r + 1) + 1));
 
     CalculateBasis<double> cb(N, r, REAL(GLRRexp),
-        (std::complex<double>*)COMPLEX(xexp),
-        ((std::complex<double>*)COMPLEX(xexp)) + N * r,
-        ((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r),
-        ((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r + 1),
-        (double*)(((std::complex<double>*)COMPLEX(xexp)) + N * (2 * r + 2)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * r),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 1)),
+        reinterpret_cast<double*>(COMPLEX(xexp) + N * (2 * r + 2)),
         0);
 
     cb.doWork();
@@ -65,11 +65,11 @@ SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
     SEXP xexp = PROTECT(allocVector(CPLXSXP, N * r));
 
     CalculatePseudograd<double> cb(N, r, REAL(GLRRexp),
-                                  (std::complex<double>*)COMPLEX(AFexp),
-                                  (double*)REAL(ALPHAexp),
-                                  tau,
-                                  (double*)REAL(SIGNALexp),
-                                  (std::complex<double>*)COMPLEX(xexp));
+        reinterpret_cast<std::complex<double>*>(COMPLEX(AFexp)),
+        reinterpret_cast<double*>(REAL(ALPHAexp)),
+        tau,
+        reinterpret_cast<double*>(REAL(SIGNALexp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
 
     cb.doWork();
     UNPROTECT(1);
@@ -90,11 +90,11 @@ SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp,
     SEXP xexp = PROTECT(allocVector(CPLXSXP, N));
 
     CalculateSylvesterGrad<double> cb(N, r, REAL(GLRRexp),
-                                      (std::complex<double>*)COMPLEX(AFexp),
-                                      (double*)REAL(ALPHAexp),
-                                      tau,
-                                      (double*)REAL(SIGNALexp),
-                                      (std::complex<double>*)COMPLEX(xexp));
+        reinterpret_cast<std::complex<double>*>(COMPLEX(AFexp)),
+        reinterpret_cast<double*>(REAL(ALPHAexp)),
+        tau,
+        reinterpret_cast<double*>(REAL(SIGNALexp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
 
     cb.doWork();
     UNPROTECT(1);
@@ -108,7 +108,7 @@ SEXP eval_tangent_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     int r = size - 1;
     SEXP xexp = PROTECT(allocVector(CPLXSXP, 2 * N * r));
     CalculateTangentBasis<double, COMPENSATED_HORNER> cb(N, r, REAL(GLRRexp),
-                                      (std::complex<double>*)COMPLEX(xexp));
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
     cb.doWork();
 
 
@@ -123,7 +123,7 @@ SEXP eval_tangent_basis(SEXP Nexp, SEXP GLRRexp) {
     int r = size - 1;
     SEXP xexp = PROTECT(allocVector(CPLXSXP, 2 * N * r));
     CalculateTangentBasis<double> cb(N, r, REAL(GLRRexp),
-                        (std::complex<double>*)COMPLEX(xexp));
+        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
     cb.doWork();
 
 

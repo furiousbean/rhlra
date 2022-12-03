@@ -23,28 +23,28 @@ template <class Td> class CalculatePseudograd {
         void eval_pseudograd_fourier() {
             int i, j;
 
-            fftw_complex* initial_f_vec = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*N);
-            fftw_complex* initial_f_vec_fourier = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*N);
-            fftw_plan my_plan = fftw_plan_dft_1d(N, initial_f_vec, initial_f_vec_fourier, FFTW_FORWARD, FFTW_ESTIMATE);
+            fftw_complex* initial_f_vec_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+            fftw_complex* current_grad_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+
+            std::complex<double>* initial_f_vec =
+                reinterpret_cast<std::complex<double>*>(initial_f_vec_fftw);
+            std::complex<double>* current_grad =
+                reinterpret_cast<std::complex<double>*>(current_grad_fftw);
+
+            fftw_plan my_plan = fftw_plan_dft_1d(N, initial_f_vec_fftw,
+                current_grad_fftw, FFTW_FORWARD, FFTW_ESTIMATE);
             for (i = 0; i < K; i++) {
-                std::complex<Td> curval = -signal[i] * std::complex<Td>(cos(-i * alpha), sin(-i * alpha));
-                initial_f_vec[i][0] = curval.real();
-                initial_f_vec[i][1] = curval.imag();
+                initial_f_vec[i] = -signal[i] * std::complex<Td>(cos(-i * alpha), sin(-i * alpha));
             }
 
             for (i = K; i < N; i++) {
-                initial_f_vec[i][0] = 0;
-                initial_f_vec[i][1] = 0;
+                initial_f_vec[i] = 0;
             }
 
             fftw_execute(my_plan);
             fftw_destroy_plan(my_plan);
-
-            std::complex<Td>* current_grad = new std::complex<Td>[N];
-            for (i = 0; i < N; i++) {
-                current_grad[i].real(initial_f_vec_fourier[i][0]);
-                current_grad[i].imag(initial_f_vec_fourier[i][1]);
-            }
 
             int cur_pnt = 0;
 
@@ -78,8 +78,8 @@ template <class Td> class CalculatePseudograd {
                 }
 
 
-            fftw_free(initial_f_vec);
-            fftw_free(initial_f_vec_fourier);
+            fftw_free(initial_f_vec_fftw);
+            fftw_free(current_grad_fftw);
         }
 
     public:
@@ -92,33 +92,39 @@ template <class Td> class CalculatePseudograd {
         }
 
         void doWork() {
-            fftw_complex *in, *out;
             fftw_plan my_plan;
             int i, j;
 
             eval_pseudograd_fourier();
 
-            in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            my_plan = fftw_plan_dft_1d(N, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+            fftw_complex *in_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+            fftw_complex *out_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+
+            std::complex<double>* in =
+                reinterpret_cast<std::complex<double>*>(in_fftw);
+            std::complex<double>* out =
+                reinterpret_cast<std::complex<double>*>(out_fftw);
+
+            my_plan = fftw_plan_dft_1d(N, in_fftw, out_fftw,
+                FFTW_BACKWARD, FFTW_ESTIMATE);
 
             for (i = 0; i < r; i++) {
                 for (j = 0; j < N; j++) {
-                    in[j][0] = pseudograd_fourier[i * N + j].real();
-                    in[j][1] = pseudograd_fourier[i * N + j].imag();
+                    in[j] = pseudograd_fourier[i * N + j];
                 }
 
                 fftw_execute(my_plan);
                 for (j = 0; j < N; j++) {
-                    pseudograd[i * N + j].real(out[j][0] / N);
-                    pseudograd[i * N + j].imag(out[j][1] / N);
+                    pseudograd[i * N + j] = out[j] / (double)N;
                 }
 
             }
 
             fftw_destroy_plan(my_plan);
-            fftw_free(in);
-            fftw_free(out);
+            fftw_free(in_fftw);
+            fftw_free(out_fftw);
             for (i = 0; i < r; i++) {
                 rotate_vector(pseudograd + i * N, N, alpha, pseudograd + i * N);
             }

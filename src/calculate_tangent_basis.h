@@ -145,7 +145,6 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
         void doWork() {
             double alpha;
             double sqrtN;
-            fftw_complex *in, *out;
             fftw_plan my_plan;
             int i, j;
 
@@ -155,27 +154,34 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
 
             eval_z_a2_fourier();
 
-            in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            my_plan = fftw_plan_dft_1d(N, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+            fftw_complex *in_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+            fftw_complex *out_fftw = reinterpret_cast<fftw_complex*>(
+                fftw_malloc(sizeof(fftw_complex) * N));
+
+            std::complex<double>* in =
+                reinterpret_cast<std::complex<double>*>(in_fftw);
+            std::complex<double>* out =
+                reinterpret_cast<std::complex<double>*>(out_fftw);
+
+            my_plan = fftw_plan_dft_1d(N, in_fftw, out_fftw,
+                FFTW_BACKWARD, FFTW_ESTIMATE);
 
             sqrtN = std::sqrt(N);
             for (i = r; i < 2 * r; i++) {
                 for (j = 0; j < N; j++) {
-                    in[j][0] = basis_fourier[i * N + j].real();
-                    in[j][1] = basis_fourier[i * N + j].imag();
+                    in[j] = basis_fourier[i * N + j];
                 }
 
                 fftw_execute(my_plan);
                 for (j = 0; j < N; j++) {
-                    basis[i * N + j].real(out[j][0] / sqrtN);
-                    basis[i * N + j].imag(out[j][1] / sqrtN);
+                    basis[i * N + j] = out[j] / sqrtN;
                 }
             }
 
             fftw_destroy_plan(my_plan);
-            fftw_free(in);
-            fftw_free(out);
+            fftw_free(in_fftw);
+            fftw_free(out_fftw);
             for (i = r; i < 2 * r; i++) {
                 rotate_vector(basis + i * N, N, alpha, basis + i * N);
             }
