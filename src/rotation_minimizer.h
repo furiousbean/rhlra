@@ -26,11 +26,10 @@ template <typename Td, int horner_scheme> std::complex<Td> cpphorner(const std::
 
 template<> std::complex<double> cpphorner<double, COMPENSATED_HORNER>(const std::complex<double>* p, size_t n,
                            std::complex<double> x) {
-    _Complex double px = { x.real(), x.imag() };
-    _Complex double result = cchorner((const _Complex double *)p, n, px);
-    double* result_as_array = reinterpret_cast<double*>(&result);
+    _Complex double result = cchorner(reinterpret_cast<const _Complex double *>(p),
+        n, reinterpret_cast<_Complex double&>(x));
 
-    return std::complex<double>(result_as_array[0], result_as_array[1]);
+    return std::complex<double>(reinterpret_cast<std::complex<double>&>(result));
 }
 
 template <class Td = double> void fill_unitroots(std::complex<Td>* data, int N) {
@@ -39,8 +38,7 @@ template <class Td = double> void fill_unitroots(std::complex<Td>* data, int N) 
 
     for (i = 0; i < N; i++) {
         cur_angle = 2 * M_PI * i / N;
-        data[i].real(cos(cur_angle));
-        data[i].imag(sin(cur_angle));
+        data[i] = { cos(cur_angle), sin(cur_angle) };
     }
 }
 
@@ -208,8 +206,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
                 alpha = conv_min_alpha(&minimum_part);
                 minimum_part = -minimum_part;
 
-                cur_rot.real(cos(alpha));
-                cur_rot.imag(sin(alpha));
+                cur_rot = { cos(alpha), sin(alpha) };
 
                 int min_flag = 1;
 
