@@ -42,7 +42,10 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
 
             F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
                 &N, &info);
-            memset(vmat, 0, sizeof(std::complex<Td>) * sz2 * sz2);
+
+            for (i = 0; i < sz2 * sz2; i++) {
+                vmat[i] = 0;
+            }
 
             for (i = 0; i < size; i++) {
                 for (j = 0; j <= i; j++) {

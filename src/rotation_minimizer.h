@@ -26,12 +26,11 @@ template <typename Td, int horner_scheme> std::complex<Td> cpphorner(const std::
 
 template<> std::complex<double> cpphorner<double, COMPENSATED_HORNER>(const std::complex<double>* p, size_t n,
                            std::complex<double> x) {
-    _Complex double px;
-    ((double*)&px)[0] = x.real();
-    ((double*)&px)[1] = x.imag();
-    _Complex double result;
-    result = cchorner((const _Complex double *)p, n, px);
-    return std::complex<double>(((double*)&result)[0], ((double*)&result)[1]);
+    _Complex double px = { x.real(), x.imag() };
+    _Complex double result = cchorner((const _Complex double *)p, n, px);
+    double* result_as_array = reinterpret_cast<double*>(&result);
+
+    return std::complex<double>(result_as_array[0], result_as_array[1]);
 }
 
 template <class Td = double> void fill_unitroots(std::complex<Td>* data, int N) {
