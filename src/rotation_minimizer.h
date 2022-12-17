@@ -8,6 +8,7 @@
 #include "chorner.h"
 #include <R.h>
 #include <Rinternals.h>
+#include <vector>
 
 const int USUAL_HORNER  = 0;
 const int COMPENSATED_HORNER  = 1;
@@ -74,29 +75,32 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
         int r;
         std::complex<Td>* glrr;
         std::complex<Td>* unitroots;
-        int* active_indices;
-        int* active_indices_as_bool;
-        int aisz;
+        std::vector<int> active_indices;
+        std::vector<bool> active_indices_as_bool;
         int SEARCH_IT;
+
+        Td norm(std::complex<Td> x) {
+            return x.real() * x.real() + x.imag() * x.imag();
+        };
 
         Td conv_eval_alpha(Td alpha) {
             std::complex<Td> sum(0);
-            int min_flag = 1;
+            bool min_flag = true;
             Td minimum(0);
             Td value;
             int i;
 
             std::complex<Td> cur_rot(cos(alpha), sin(alpha));
-            for (i = 0; i < aisz; i++) {
+            for (i = 0; i < active_indices.size(); i++) {
                 sum = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[active_indices[i]] * cur_rot);
-                value = (sum * conj(sum)).real();
+                value = norm(sum);
                 if (min_flag || value < minimum) {
                     minimum = value;
-                    min_flag = 0;
+                    min_flag = false;
                 }
             }
 
-            // Rprintf("A %lf %lf %ld\n", alpha, -log(minimum), aisz);
+            // Rprintf("A %lf %lf %ld\n", alpha, -log(minimum), active_indices.size());
             return -minimum;
         }
 
@@ -133,7 +137,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
             Td lc = 0, rc, cur_value, cur_alpha;
             Td alpha = 0;
             rc = 2 * M_PI / N;
-            int min_flag = 1;
+            bool min_flag = true;
 
             for (int i = 0; i < SEARCH_INT; i++) {
                 cur_alpha = conv_min_alpha_int(lc + i * (rc - lc) / SEARCH_INT,
@@ -146,7 +150,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
                 if (min_flag || cur_value < *minimum) {
                     *minimum = cur_value;
                     alpha = cur_alpha;
-                    min_flag = 0;
+                    min_flag = false;
                 }
             }
             return alpha;
@@ -154,21 +158,16 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
     public:
         RotationMinimizer(int N, int r, Td* rglrr, std::complex<Td>* unitroots) : N(N),
-        r(r), unitroots(unitroots), aisz(0) {
+        r(r), unitroots(unitroots), active_indices_as_bool(N) {
             glrr = new std::complex<Td>[r + 1];
             for (int i = 0; i < r + 1; i++)
                 glrr[i] = rglrr[i];
-
-            active_indices = new int[N];
-            active_indices_as_bool = new int[N];
 
             SEARCH_IT = getSearchIt<horner_scheme>();
         }
 
         ~RotationMinimizer() {
             delete[] glrr;
-            delete[] active_indices;
-            delete[] active_indices_as_bool;
         }
 
         void findMinimum(std::complex<Td>* A_f, Td& alpha) {
@@ -182,24 +181,21 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
             std::complex<Td> cur_rot(cos(alpha), sin(alpha));
             for (i = 0; i < N; i++) {
-                active_indices[i] = 0;
-                active_indices_as_bool[i] = 0;
                 A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
-                value = (A_f[i] * conj(A_f[i])).real();
+                value = norm(A_f[i]);
                 if (new_idx == -1 || value < cur_minimum) {
                         new_idx = i;
                         cur_minimum = value;
                     }
             }
 
-            active_indices_as_bool[new_idx] = 1;
-            active_indices_as_bool[(new_idx + N - 1) % N] = 1;
-            // active_indices_as_bool[(new_idx + 1) % N] = 1;
+            active_indices.push_back((new_idx + N - 1) % N);
+            active_indices.push_back(new_idx);
+            // active_indices.push_back((new_idx + 1) % N);
 
-            active_indices[0] = new_idx;
-            active_indices[1] = (new_idx + N - 1) % N;
-            // active_indices[2] = (new_idx + 1) % N;
-            aisz = 2;
+            active_indices_as_bool[(new_idx + N - 1) % N] = true;
+            active_indices_as_bool[new_idx] = true;
+            // active_indices_as_bool[(new_idx + 1) % N] = true;
 
             do {
                 // Rprintf("B %d\n", aisz);
@@ -208,30 +204,28 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
                 cur_rot = { cos(alpha), sin(alpha) };
 
-                int min_flag = 1;
+                bool min_flag = true;
 
                 for (i = 0; i < N; i++) {
                     A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
-                    value = (A_f[i] * conj(A_f[i])).real();
+                    value = norm(A_f[i]);
                     if (min_flag || value < cur_minimum) {
                         new_idx = i;
                         cur_minimum = value;
-                        min_flag = 0;
+                        min_flag = false;
                     }
                 }
 
                 // Rprintf("minimum_part: %f, cur_minimum %f\n", minimum_part, cur_minimum);
                 if (minimum_part > cur_minimum) {
-                    active_indices_as_bool[new_idx] = 1;
-                    active_indices_as_bool[(new_idx + N - 1) % N] = 1;
-                    active_indices_as_bool[(new_idx + 1) % N] = 1;
-                    // Rprintf("OK try again\n");
-                    aisz = 0;
-                    for (i = 0; i < N; i++) {
-                        if (active_indices_as_bool[i]) {
-                            active_indices[aisz++] = i;
+                    int new_indices[2] = { (new_idx + N - 1) % N, new_idx };
+                    for (i = 0; i < 2; i++) {
+                        if (!active_indices_as_bool[new_indices[i]]) {
+                            active_indices_as_bool[new_indices[i]] = true;
+                            active_indices.push_back(new_indices[i]);
                         }
                     }
+                    // Rprintf("OK try again %ld\n", active_indices.size());
                 } else {
                     // Rprintf("DONE\n");
                     break;
