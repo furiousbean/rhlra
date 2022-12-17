@@ -122,12 +122,17 @@ template <class Td> class CalculatePseudograd {
 
             }
 
+            std::complex<double>* rotation = out;
+            fill_rotation(rotation, N, alpha);
+            for (i = 0; i < r; i++) {
+                for (j = 0; j < N; j++) {
+                    pseudograd[i * N + j] *= rotation[j];
+                }
+            }
+
             fftw_destroy_plan(my_plan);
             fftw_free(in_fftw);
             fftw_free(out_fftw);
-            for (i = 0; i < r; i++) {
-                rotate_vector(pseudograd + i * N, N, alpha, pseudograd + i * N);
-            }
         }
 
         ~CalculatePseudograd() {

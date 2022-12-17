@@ -90,10 +90,15 @@ template <class Td> class CalculateSylvesterGrad {
                 pseudograd[j] = out[j] / (double)N;
             }
 
+            std::complex<double>* rotation = out;
+            fill_rotation(rotation, N, -alpha);
+            for (j = 0; j < N; j++) {
+                pseudograd[j] *= rotation[j];
+            }
+
             fftw_destroy_plan(my_plan);
             fftw_free(in_fftw);
             fftw_free(out_fftw);
-            rotate_vector(pseudograd, N, -alpha, pseudograd);
         }
 
         ~CalculateSylvesterGrad() {

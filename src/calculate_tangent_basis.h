@@ -182,12 +182,17 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
                 }
             }
 
+            std::complex<double>* rotation = out;
+            fill_rotation(rotation, N, alpha);
+            for (i = 0; i < 2 * r; i++) {
+                for (j = 0; j < N; j++) {
+                    basis[i * N + j] *= rotation[j];
+                }
+            }
+
             fftw_destroy_plan(my_plan);
             fftw_free(in_fftw);
             fftw_free(out_fftw);
-            for (i = r; i < 2 * r; i++) {
-                rotate_vector(basis + i * N, N, alpha, basis + i * N);
-            }
         }
 };
 

@@ -53,11 +53,9 @@ template <class Td = double> void fill_fourier_matrix(std::complex<Td>* data, in
     }
 }
 
-template <class Td = double> void rotate_vector(std::complex<Td>* input, int N, double alpha,
-                   std::complex<Td>* output) {
-    int i;
-    for (i = 0; i < N; i++) {
-        output[i] = input[i] * std::complex<Td>(cos(alpha * i), sin(alpha * i));
+template <class Td = double> void fill_rotation(std::complex<Td>* data, int N, double alpha) {
+    for (int i = 0; i < N; i++) {
+        data[i] = std::complex<Td>(cos(alpha * i), sin(alpha * i));
     }
 }
 
@@ -88,10 +86,9 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
             bool min_flag = true;
             Td minimum(0);
             Td value;
-            int i;
 
             std::complex<Td> cur_rot(cos(alpha), sin(alpha));
-            for (i = 0; i < active_indices.size(); i++) {
+            for (int i = 0; i < (int)active_indices.size(); i++) {
                 sum = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[active_indices[i]] * cur_rot);
                 value = norm(sum);
                 if (min_flag || value < minimum) {
