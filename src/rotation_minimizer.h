@@ -181,9 +181,9 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
                 A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
                 value = norm(A_f[i]);
                 if (new_idx == -1 || value < cur_minimum) {
-                        new_idx = i;
-                        cur_minimum = value;
-                    }
+                    new_idx = i;
+                    cur_minimum = value;
+                }
             }
 
             active_indices.push_back((new_idx + N - 1) % N);
@@ -215,14 +215,20 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
                 // Rprintf("minimum_part: %f, cur_minimum %f\n", minimum_part, cur_minimum);
                 if (minimum_part > cur_minimum) {
+                    bool added_index = false;
                     int new_indices[2] = { (new_idx + N - 1) % N, new_idx };
                     for (i = 0; i < 2; i++) {
                         if (!active_indices_as_bool[new_indices[i]]) {
                             active_indices_as_bool[new_indices[i]] = true;
                             active_indices.push_back(new_indices[i]);
+                            added_index = true;
                         }
                     }
+                    if (!added_index) {
+                        break;
+                    }
                     // Rprintf("OK try again %ld\n", active_indices.size());
+                    // Rprintf("minimum_part: %.10e, cur_minimum %.10e, delta %.10e\n", minimum_part, cur_minimum, minimum_part - cur_minimum);
                 } else {
                     // Rprintf("DONE\n");
                     break;

@@ -15,20 +15,47 @@ SEXP eval_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
     int r = size - 1;
 
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, N * (3 * r + 1) + 1 + r * r));
+    SEXP basis_exp = PROTECT(allocMatrix(CPLXSXP, N, r));
+    SEXP basis_fourier_exp = PROTECT(allocMatrix(CPLXSXP, N, r));
+    SEXP unitroots_exp = PROTECT(allocVector(CPLXSXP, N));
+    SEXP A_f_exp = PROTECT(allocVector(CPLXSXP, N));
+    SEXP alpha_exp = PROTECT(allocVector(REALSXP, 1));
+    SEXP qrinvmat_exp = PROTECT(allocMatrix(CPLXSXP, r, r));
+    SEXP answer_exp = PROTECT(allocVector(VECSXP, 7));
+
+    SET_VECTOR_ELT(answer_exp, 0, basis_exp);
+    SET_VECTOR_ELT(answer_exp, 1, basis_fourier_exp);
+    SET_VECTOR_ELT(answer_exp, 2, unitroots_exp);
+    SET_VECTOR_ELT(answer_exp, 3, A_f_exp);
+    SET_VECTOR_ELT(answer_exp, 4, alpha_exp);
+    SET_VECTOR_ELT(answer_exp, 5, qrinvmat_exp);
+    SET_VECTOR_ELT(answer_exp, 6, GLRRexp);
+
+    /* create names */
+    SEXP names = PROTECT(allocVector(STRSXP, 7));
+    SET_STRING_ELT(names, 0, mkChar("basis"));
+    SET_STRING_ELT(names, 1, mkChar("basis_fourier"));
+    SET_STRING_ELT(names, 2, mkChar("unitroots"));
+    SET_STRING_ELT(names, 3, mkChar("A_f"));
+    SET_STRING_ELT(names, 4, mkChar("alpha"));
+    SET_STRING_ELT(names, 5, mkChar("qrinvmat"));
+    SET_STRING_ELT(names, 6, mkChar("glrr"));
+
+    /* assign names to list */
+    setAttrib(answer_exp, R_NamesSymbol, names);
 
     CalculateBasis<double, COMPENSATED_HORNER, ORTHOGONALIZATION> cb(N, r, REAL(GLRRexp),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * r),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r)),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 1)),
-        reinterpret_cast<double*>(COMPLEX(xexp) + N * (2 * r + 2)),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 2) + 1));
+        reinterpret_cast<std::complex<double>*>(COMPLEX(basis_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(basis_fourier_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(unitroots_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(A_f_exp)),
+        REAL(alpha_exp),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(qrinvmat_exp)));
 
     cb.doWork();
-    UNPROTECT(1);
+    UNPROTECT(8);
 
-    return xexp;
+    return answer_exp;
 }
 
 SEXP eval_basis(SEXP Nexp, SEXP GLRRexp) {
@@ -36,20 +63,44 @@ SEXP eval_basis(SEXP Nexp, SEXP GLRRexp) {
     int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
     int r = size - 1;
 
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, N * (3 * r + 1) + 1));
+    SEXP basis_exp = PROTECT(allocMatrix(CPLXSXP, N, r));
+    SEXP basis_fourier_exp = PROTECT(allocMatrix(CPLXSXP, N, r));
+    SEXP unitroots_exp = PROTECT(allocVector(CPLXSXP, N));
+    SEXP A_f_exp = PROTECT(allocVector(CPLXSXP, N));
+    SEXP alpha_exp = PROTECT(allocVector(REALSXP, 1));
+    SEXP answer_exp = PROTECT(allocVector(VECSXP, 6));
+
+    SET_VECTOR_ELT(answer_exp, 0, basis_exp);
+    SET_VECTOR_ELT(answer_exp, 1, basis_fourier_exp);
+    SET_VECTOR_ELT(answer_exp, 2, unitroots_exp);
+    SET_VECTOR_ELT(answer_exp, 3, A_f_exp);
+    SET_VECTOR_ELT(answer_exp, 4, alpha_exp);
+    SET_VECTOR_ELT(answer_exp, 5, GLRRexp);
+
+    /* create names */
+    SEXP names = PROTECT(allocVector(STRSXP, 6));
+    SET_STRING_ELT(names, 0, mkChar("basis"));
+    SET_STRING_ELT(names, 1, mkChar("basis_fourier"));
+    SET_STRING_ELT(names, 2, mkChar("unitroots"));
+    SET_STRING_ELT(names, 3, mkChar("A_f"));
+    SET_STRING_ELT(names, 4, mkChar("alpha"));
+    SET_STRING_ELT(names, 5, mkChar("glrr"));
+
+    /* assign names to list */
+    setAttrib(answer_exp, R_NamesSymbol, names);
 
     CalculateBasis<double> cb(N, r, REAL(GLRRexp),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * r),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r)),
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp) + N * (2 * r + 1)),
-        reinterpret_cast<double*>(COMPLEX(xexp) + N * (2 * r + 2)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(basis_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(basis_fourier_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(unitroots_exp)),
+        reinterpret_cast<std::complex<double>*>(COMPLEX(A_f_exp)),
+        REAL(alpha_exp),
         0);
 
     cb.doWork();
-    UNPROTECT(1);
+    UNPROTECT(7);
 
-    return xexp;
+    return answer_exp;
 }
 
 SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
@@ -62,7 +113,7 @@ SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
     int r = size - 1;
     int tau = INTEGER(TAUexp)[0] - 1;
 
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, N * r));
+    SEXP xexp = PROTECT(allocMatrix(CPLXSXP, N, r));
 
     CalculatePseudograd<double> cb(N, r, REAL(GLRRexp),
         reinterpret_cast<std::complex<double>*>(COMPLEX(AFexp)),
@@ -106,7 +157,7 @@ SEXP eval_tangent_basis_compensated(SEXP Nexp, SEXP GLRRexp) {
     int N = INTEGER(Nexp)[0];
     int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
     int r = size - 1;
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, 2 * N * r));
+    SEXP xexp = PROTECT(allocMatrix(CPLXSXP, N, 2 * r));
     CalculateTangentBasis<double, COMPENSATED_HORNER> cb(N, r, REAL(GLRRexp),
         reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
     cb.doWork();
@@ -121,7 +172,7 @@ SEXP eval_tangent_basis(SEXP Nexp, SEXP GLRRexp) {
     int N = INTEGER(Nexp)[0];
     int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
     int r = size - 1;
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, 2 * N * r));
+    SEXP xexp = PROTECT(allocMatrix(CPLXSXP, N, 2 * r));
     CalculateTangentBasis<double> cb(N, r, REAL(GLRRexp),
         reinterpret_cast<std::complex<double>*>(COMPLEX(xexp)));
     cb.doWork();

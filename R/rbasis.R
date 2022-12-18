@@ -9,14 +9,7 @@ eval_basis.default <- function(this, N, glrr) {
     dim(glrr) <- length(glrr)
     r <- length(glrr) - 1
 
-    result <- .Call("eval_basisC", N, glrr, PACKAGE = "rhlra")
-
-    list(basis = matrix(result[1 : (N*r)], nrow = N),
-         basis_fourier = matrix(result[(N*r + 1) : (2*N*r)], nrow = N),
-         unitroots = result[(2*N*r + 1) : (N*(2 * r + 1))],
-         A_f = result[(N*(2 * r + 1) + 1) : (N*(2 * r + 2))],
-         alpha = Re(result[N*(2 * r + 2) + 1]),
-         glrr = glrr)
+    .Call("eval_basisC", N, glrr, PACKAGE = "rhlra")
 }
 
 eval_basis.compensated <- function(this, N, glrr) {
@@ -25,14 +18,7 @@ eval_basis.compensated <- function(this, N, glrr) {
     dim(glrr) <- length(glrr)
     r <- length(glrr) - 1
 
-    result <- .Call("eval_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
-    list(basis = matrix(result[1 : (N*r)], nrow = N),
-         basis_fourier = matrix(result[(N*r + 1) : (2*N*r)], nrow = N),
-         unitroots = result[(2*N*r + 1) : (N*(2 * r + 1))],
-         A_f = result[(N*(2 * r + 1) + 1) : (N*(2 * r + 2))],
-         alpha = Re(result[N*(2 * r + 2) + 1]),
-         qrinvmat = matrix(result[(N*(2 * r + 2) + 2) : (N*(2 * r + 2) + r * r + 1)], nrow = r),
-         glrr = glrr)
+    .Call("eval_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
 }
 
 
@@ -48,8 +34,7 @@ eval_pseudograd.default <- function(this, N, glrr, signal, tau, basis_obj) {
 
     r <- length(glrr) - 1
 
-    result <- .Call("eval_pseudogradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
-    matrix(result, nrow = N)
+    .Call("eval_pseudogradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
 }
 
 eval_pseudograd.compensated <- eval_pseudograd.default
@@ -65,8 +50,7 @@ eval_sylvester_grad.default <- function(this, N, glrr, signal, tau, basis_obj) {
 
     r <- length(glrr) - 1
 
-    result <- .Call("eval_sylvester_gradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
-    as.complex(result)
+    .Call("eval_sylvester_gradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
 }
 
 eval_sylvester_grad.compensated <- eval_sylvester_grad.default
@@ -76,9 +60,7 @@ eval_tangent_basis.default <- function(this, N, glrr) {
     glrr <- as.vector(glrr)
     dim(glrr) <- length(glrr)
 
-    result <- .Call("eval_tangent_basisC", N, glrr, PACKAGE = "rhlra")
-
-    matrix(result, nrow = N)
+    .Call("eval_tangent_basisC", N, glrr, PACKAGE = "rhlra")
 }
 
 eval_tangent_basis.compensated <- function(this, N, glrr) {
@@ -86,9 +68,7 @@ eval_tangent_basis.compensated <- function(this, N, glrr) {
     glrr <- as.vector(glrr)
     dim(glrr) <- length(glrr)
 
-    result <- .Call("eval_tangent_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
-
-    matrix(result, nrow = N)
+    .Call("eval_tangent_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
 }
 
 glue_series_lists <- function(series_list) {
