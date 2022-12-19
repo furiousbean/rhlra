@@ -496,9 +496,11 @@ get_glrr_from_nonlrf_series.1dm <- function(this, series, r) {
 }
 
 weighted_project_rotate_basis <- function(zspace, chol_weights) {
-    real_part <- as.matrix(chol_weights %*% Re(zspace))
-    imag_part <- as.matrix(chol_weights %*% Im(zspace))
-    zspace_rot <- real_part + 1i * imag_part
+    real_part <- chol_weights %*% Re(zspace)
+    imag_part <- chol_weights %*% Im(zspace)
+    zspace_rot <- complex(real = as.numeric(real_part),
+                          imaginary = as.numeric(imag_part))
+    dim(zspace_rot) <- dim(zspace)
     qr(zspace_rot)
 }
 
