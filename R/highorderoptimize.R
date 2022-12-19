@@ -495,7 +495,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
     }
 
     for (i in 1:k) {
-        if (debug) cat(sprintf("%d EM iteration\n", i))
+        if (debug == "P" || debug) cat(sprintf("%d EM iteration\n", i))
 
         signal_obj <- cadzow_with_mgn(obj, series, L, r, ar_coefs, right_diag, debug = debug,
                                      envelope = envelope, series_for_cadzow = series_for_cadzow,
@@ -514,7 +514,10 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
         }
     }
 
-    if (debug) print(ar_coefs_all)
+    if (debug == "P" || debug) {
+        cat(sprintf("AR coefficients evolution:\n"))
+        print(ar_coefs_all)
+    }
 
     if (!is.list(series)) {
         N <- length(as.numeric(signal_obj$signal))

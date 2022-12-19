@@ -34,7 +34,7 @@ hlra_igapfill <- function(series, r, igapfill_epsilon = 1e-6, igapfill_it_limit 
         it <- it + 1
     }
 
-    if (debug) {
+    if (debug == "P") {
         plot(series, type = "b", main = "igapfill: filled series", xlab = "index", ylab = "value")
         plot(dists, log = "y", type = "b", main = "igapfill: steps", xlab = "index", ylab = "value")
     }
@@ -409,8 +409,11 @@ oblique_cadzow_eps <- function(this, series, r, left_chol_mat, right_chol_mat,
         proj <- empty_answer
     }
 
-    if (debug) {
+    if (debug == "P" || debug) {
         cat(sprintf("%d cadzow iterations done\n", it))
+    }
+
+    if (debug == "P") {
         if (length(dists) > 1) {
             plot(dists, type = "b", log = "y",
                  main = "Relative step lengths")
@@ -431,11 +434,6 @@ trmat_indices <- function(N, L) {
 traj_matrix <- function(series, L) {
     outer(1:L, 1:(length(series) - L + 1),
           function(i, j) series[i + j - 1])
-}
-
-neg_fourier_short_mat <- function(N, indices) {
-    full_indx <- outer(0:(N-1), indices)
-    matrix(complex(argument = (full_indx %% N)*2*pi/N), nrow = N)
 }
 
 get_comp_space_by_glrr <- function(this, N, glrr, glrr_2 = FALSE, return_pack = FALSE) {
@@ -800,18 +798,21 @@ mgn <- function(this, series, signal, r, weights,
             j <- j + 1
         }
 
-        if (j == mgn_j_limit && debug ) {
+        if (j == mgn_j_limit && (debug == "P" || debug)) {
             cat("no steps found\n")
         } else {
-            if (j > 0 && debug) cat(sprintf("reduction, it = %d, j = %d\n", it, j))
+            if (j > 0 && (debug == "P" || debug)) cat(sprintf("reduction, it = %d, j = %d\n", it, j))
         }
 
         if (!next_it) break
         if (it > mgn_it_limit) break
     }
 
-    if (debug) {
+    if (debug == "P" || debug) {
         cat(sprintf("%d MGN iterations done\n", it))
+    }
+
+    if (debug == "P") {
         draw_full_plot <- function(N, series, best_signal, signal, initial_best_signal) {
             matplot(1:N, cbind(series, best_signal, signal),
                     type = "l", lty = 1:3,
@@ -858,7 +859,7 @@ unit_envelope <- function(series, bignumber = 1e6) {
 fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL, additional_pars = list()) {
     result <- series
     if (any(is.na(series))) {
-        if (debug) cat("fillgaps... ")
+        if (debug == "P" || debug) cat("fillgaps: started\n")
 
         igapfill_call_list = list(series = series,
                                   r = r,
@@ -869,7 +870,7 @@ fill_gaps <- function(series, r, debug = FALSE, set_seed = NULL, additional_pars
         result <- do.call(hlra_igapfill,
             expand_pars_list(igapfill_call_list, igapfill_add_pars_names, additional_pars))
 
-        if (debug) cat("done\n")
+        if (debug == "P" || debug) cat("fillgaps: done\n")
     }
     result
 }
