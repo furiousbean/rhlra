@@ -5,18 +5,24 @@ eval_tangent_basis <- function(obj, ...) UseMethod("eval_tangent_basis")
 
 eval_basis.default <- function(this, N, glrr) {
     N <- as.integer(N)
-    glrr <- as.vector(glrr)
+    glrr <- as.numeric(glrr)
     dim(glrr) <- length(glrr)
     r <- length(glrr) - 1
+    if (!all(is.finite(glrr)) || all(glrr == 0) || !(r > 0) || !(N > r)) {
+        stop("Critical: eval_basis checks failed")
+    }
 
     .Call("eval_basisC", N, glrr, PACKAGE = "rhlra")
 }
 
 eval_basis.compensated <- function(this, N, glrr) {
     N <- as.integer(N)
-    glrr <- as.vector(glrr)
+    glrr <- as.numeric(glrr)
     dim(glrr) <- length(glrr)
     r <- length(glrr) - 1
+    if (!all(is.finite(glrr)) || all(glrr == 0) || !(r > 0) || !(N > r)) {
+        stop("Critical: eval_basis checks failed")
+    }
 
     .Call("eval_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
 }
@@ -34,6 +40,11 @@ eval_pseudograd.default <- function(this, N, glrr, signal, tau, basis_obj) {
 
     r <- length(glrr) - 1
 
+    if (!all(is.finite(glrr)) || !all(is.finite(signal)) || all(glrr == 0) ||
+        !(r > 0) || !(N > r) || !(length(signal) == N)) {
+        stop("Critical: eval_pseudograd checks failed")
+    }
+
     .Call("eval_pseudogradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
 }
 
@@ -50,6 +61,11 @@ eval_sylvester_grad.default <- function(this, N, glrr, signal, tau, basis_obj) {
 
     r <- length(glrr) - 1
 
+    if (!all(is.finite(glrr)) || !all(is.finite(signal)) || all(glrr == 0) ||
+        !(r > 0) || !(N > r) || !(length(signal) == N)) {
+        stop("Critical: eval_pseudograd checks failed")
+    }
+
     .Call("eval_sylvester_gradC", N, glrr, basis_obj$A_f, basis_obj$alpha, tau, signal, PACKAGE = "rhlra")
 }
 
@@ -60,6 +76,12 @@ eval_tangent_basis.default <- function(this, N, glrr) {
     glrr <- as.vector(glrr)
     dim(glrr) <- length(glrr)
 
+    r <- length(glrr) - 1
+
+    if (!all(is.finite(glrr)) || all(glrr == 0) || !(r > 0) || !(N > 2 * r)) {
+        stop("Critical: eval_tangent_basis checks failed")
+    }
+
     .Call("eval_tangent_basisC", N, glrr, PACKAGE = "rhlra")
 }
 
@@ -67,6 +89,12 @@ eval_tangent_basis.compensated <- function(this, N, glrr) {
     N <- as.integer(N)
     glrr <- as.vector(glrr)
     dim(glrr) <- length(glrr)
+
+    r <- length(glrr) - 1
+
+    if (!all(is.finite(glrr)) || all(glrr == 0) || !(r > 0) || !(N > 2 * r)) {
+        stop("Critical: eval_tangent_basis checks failed")
+    }
 
     .Call("eval_tangent_basis_compensatedC", N, glrr, PACKAGE = "rhlra")
 }

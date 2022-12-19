@@ -5,6 +5,7 @@
 #include <complex>
 #include <math.h>
 #include "rotation_minimizer.h"
+#include <vector>
 
 
 template <class Td> class CalculatePseudograd {
@@ -55,14 +56,21 @@ template <class Td> class CalculatePseudograd {
                 cur_pnt = 1;
             }
 
+            std::vector<std::complex<Td>> back_rotation(N);
+            std::vector<std::complex<Td>> front_rotation(N);
+
+            for (i = 0; i < N; i++) {
+                back_rotation[i] = std::complex<Td>(
+                    cos(alpha + 2 * M_PI * i / N), sin(alpha + 2 * M_PI * i / N));
+                front_rotation[i] = std::complex<Td>(
+                    cos(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N),
+                    sin(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N));
+            }
+
             for (j = 1; j < r + 1; j++) {
                 for (i = 0; i < N; i++) {
-                    current_grad[i] = (current_grad[i] + signal[j - 1]) *
-                        std::complex<Td>(cos(alpha + 2 * M_PI * i / N),
-                        sin(alpha + 2 * M_PI * i / N)) -
-                        signal[j + K - 1] * std::complex<Td>(
-                            cos(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N),
-                            sin(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N));
+                    current_grad[i] = (current_grad[i] + signal[j - 1]) * back_rotation[i]
+                         - signal[j + K - 1] * front_rotation[i];
                 }
                 if (tau != j) {
                     for (i = 0; i < N; i++) {
