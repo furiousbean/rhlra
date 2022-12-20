@@ -2,8 +2,7 @@ library(Rssa)
 library(rhlra)
 library(snow)
 data("USUnemployment")
-series <- USUnemployment[, 2]
-series <- series[!is.na(series)]
+series <- log(USUnemployment[, 2])
 
 seedf <- function() set.seed(15)
 
@@ -35,8 +34,8 @@ p <- 3
 
 
 answer <- hlra_ar(series, r = r, p = p, alpha = alpha,
-                  initial_ar_coefs = c(.9), set_seed = seedf, debug = T)
+                  initial_ar_coefs = c(.9), set_seed = seedf)
 
-plot(as.numeric(series), type = "l")
+plot(series)
 lines(answer$signal, col = "red")
 plot(answer$noise, main = "noise", type = "l")

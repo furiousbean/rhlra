@@ -160,3 +160,16 @@ expand_pars_list <- function(input_list, pars_names, additional_pars) {
 
     input_list
 }
+
+substitute_new_data <- function(original, fix) {
+    answer <- original
+    if (!is.list(original)) {
+        answer[1:length(original)] <- fix
+    } else {
+        for (i in seq_along(original)) {
+            answer[[i]][1:length(original[[i]])] <- fix[[i]]
+        }
+    }
+
+    answer
+}

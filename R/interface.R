@@ -105,6 +105,9 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
     return(signal_obj)
 }
 
@@ -160,6 +163,9 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
     classes <- c(classes, "hlra")
 
     class(signal_obj) <- classes
+
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
 
     return(signal_obj)
 }
@@ -285,6 +291,9 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
     signal_obj["noise_norm"] <- NULL
     signal_obj$gcd <- signal_obj$gcd / sqrt(sum(signal_obj$gcd ^ 2))
 
+    signal_obj$approximation <- substitute_new_data(polynoms, signal_obj$approximation)
+    signal_obj$residual <- substitute_new_data(polynoms, signal_obj$residual)
+
     return(signal_obj)
 }
 
@@ -373,6 +382,9 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
     return(signal_obj)
 }
 
@@ -395,10 +407,9 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 #' @examples
 #' library(Rssa)
 #' data("USUnemployment")
-#' series <- USUnemployment[, 2]
-#' series <- series[!is.na(series)]
+#' series <- log(USUnemployment[, 2])
 #' x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-#' plot(x$signal, type = "l")
+#' plot(x$signal)
 hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
                     initial_ar_coefs = NULL, debug = FALSE,
@@ -533,6 +544,13 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
+    if (!is.null(names(series))) {
+        names(signal_obj$ar_coefs) <- names(series)
+    }
+
     return(signal_obj)
 }
 
@@ -553,8 +571,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 #' library(Rssa)
 #' data("USUnemployment")
 #' seedf <- function() set.seed(15)
-#' series <- USUnemployment[, 2]
-#' series <- series[!is.na(series)]
+#' series <- log(USUnemployment[, 2])
 #' bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
 #' plot.hlra_tune(bic_data)
 hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,

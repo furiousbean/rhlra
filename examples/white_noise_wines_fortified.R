@@ -3,7 +3,6 @@ library(Rssa)
 
 data(AustralianWine)
 series <- AustralianWine[, 3]
-series <- series[!is.na(series)]
 
 # раскомментировать для построения картинки с BIC
 
@@ -16,6 +15,6 @@ series <- series[!is.na(series)]
 #best model chosen
 r <- 15
 answer <- hlra(series, r = r)
-plot(as.numeric(series), type = "l")
+plot(series, type = "l")
 lines(answer$signal, col = "red")
 plot(answer$noise, main = "noise", type = "l")

@@ -30,10 +30,10 @@ answer <- hlra_ar(series, r = r, p = p, alpha = alpha,
 # answer <- hlra_ar(series, r = r, p = p, alpha = .3, debug = TRUE,
 #                                    initial_coefs = c(.9))
 
-plot(as.numeric(series[[1]]), type = "l")
-lines(answer$signal[[1]], col = "red")
-plot(answer$noise[[1]], main = "noise", type = "l")
+plot(series$M_TEEN)
+lines(answer$signal$M_TEEN, col = "red")
+plot(answer$noise$M_TEEN, main = "noise", type = "l")
 
-plot(as.numeric(series[[2]]), type = "l")
-lines(answer$signal[[2]], col = "red")
-plot(answer$noise[[2]], main = "noise", type = "l")
+plot(series$F_TEEN)
+lines(answer$signal$F_TEEN, col = "red")
+plot(answer$noise$F_TEEN, main = "noise", type = "l")
