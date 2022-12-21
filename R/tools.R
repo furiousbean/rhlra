@@ -173,3 +173,47 @@ substitute_new_data <- function(original, fix) {
 
     answer
 }
+
+numeric_check <- function(input) {
+    if (is.list(input)) {
+        numeric_check_list(input)
+    } else {
+        numeric_check_vector(input)
+    }
+}
+
+numeric_check_vector <- function(input) {
+    if (!is.numeric(input)) {
+        stop("Only numeric (real) input series are supported")
+    }
+
+    if (is.matrix(input) || !is.null(dim(input))) {
+        stop("Matrix/multidimensional input is now not supported")
+    }
+
+    input <- input[!is.na(input)]
+
+    if (length(input) == 0) {
+        stop("Input has zero length")
+    }
+
+    if (!all(is.finite(input))) {
+        stop("Input must have finite values or NA's")
+    }
+}
+
+numeric_check_list <- function(input) {
+    if (length(input) == 0) {
+        stop("Input list is empty")
+    }
+
+    for (i in seq_along(input)) {
+        numeric_check_vector(input[[i]])
+    }
+}
+
+whole_number_check <- function(input) {
+    if (!(length(input) == 1 && as.integer(input) - input == 0 && input > 0)) {
+        stop("Argument must be a whole positive number")
+    }
+}

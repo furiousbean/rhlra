@@ -61,17 +61,44 @@ hlra_mgn_default_chol <- function(series, weights = 1) {
 hlra_cadzow <- function(series, r, L = default_L(series),
                         left_diags = NULL, right_diags = NULL,
                         debug = FALSE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
+    whole_number_check(r)
+    whole_number_check(L)
 
     obj <- list()
 
     classes <- character(0)
 
+    K <- NULL
+
+    if (!is.list(series)) {
+        K <- length(series) - L + 1
+    } else {
+        K <- 0
+        sapply(series,
+               function(x) {
+                   if (length(x) < L) {
+                       stop("Dimensionality check fail: L is too big")
+                   }
+                   K <<- K + length(x) - L + 1
+               },
+               simplify = FALSE)
+    }
+
+    if (r >= L) {
+        stop("Dimensionality check fail: r is too big or L is too small")
+    }
+
+    if (r >= K) {
+        stop("Dimensionality check fail: r or L is too big")
+    }
+
     if (!is.list(series)) {
         if (is.null(left_diags)) {
             left_diags <- list(rep(1, L))
             right_diags <- list(rep(1, length(series) - L + 1))
-        }
 
+        }
 
         if (any(is.na(series))) {
             stop("Input series must not contain NA's")
@@ -129,6 +156,7 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
                      debug = FALSE, compensated = TRUE, additional_pars = list()) {
+    numeric_check(series)
 
     obj <- list()
 
@@ -187,6 +215,7 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL,
                      alpha = 0.1, debug = FALSE, compensated = TRUE,
                      additional_pars = list()) {
+    numeric_check(polynoms)
 
     obj <- list()
 
@@ -319,6 +348,7 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
                  alpha = 0.1, debug = FALSE,
                  envelope = unit_envelope(series),
                  compensated = TRUE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
 
     obj <- list()
 
@@ -415,6 +445,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     initial_ar_coefs = NULL, debug = FALSE,
                     envelope = unit_envelope(series),
                     compensated = TRUE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
 
     if (p == 0) {
         return(hlra(series, r, L, alpha, debug = debug,
