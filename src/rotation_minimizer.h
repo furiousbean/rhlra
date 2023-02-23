@@ -1,14 +1,19 @@
 #ifndef ROTATION_MINIMIZER_H
 #define ROTATION_MINIMIZER_H
 
-#include <stdlib.h>
 #include <complex>
 #include <complex.h>
 #include <math.h>
-#include "chorner.h"
+#include <memory>
+#include <vector>
+#include <stdlib.h>
+
 #include <R.h>
 #include <Rinternals.h>
-#include <vector>
+
+#include "alloc.h"
+#include "chorner.h"
+
 
 const int USUAL_HORNER  = 0;
 const int COMPENSATED_HORNER  = 1;
@@ -68,28 +73,29 @@ template <> int getSearchIt<COMPENSATED_HORNER>() {
 }
 
 template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
+    using TComplex = std::complex<Td>;
     private:
         int N;
         int r;
-        std::complex<Td>* glrr;
-        std::complex<Td>* unitroots;
+        std::shared_ptr<TComplex> glrr;
+        TComplex* unitroots;
         std::vector<int> active_indices;
         std::vector<bool> active_indices_as_bool;
         int SEARCH_IT;
 
-        Td norm(std::complex<Td> x) {
+        Td norm(TComplex x) {
             return x.real() * x.real() + x.imag() * x.imag();
         };
 
         Td conv_eval_alpha(Td alpha) {
-            std::complex<Td> sum(0);
+            TComplex sum(0);
             bool min_flag = true;
             Td minimum(0);
             Td value;
 
-            std::complex<Td> cur_rot(cos(alpha), sin(alpha));
+            TComplex cur_rot(cos(alpha), sin(alpha));
             for (int i = 0; i < (int)active_indices.size(); i++) {
-                sum = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[active_indices[i]] * cur_rot);
+                sum = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[active_indices[i]] * cur_rot);
                 value = norm(sum);
                 if (min_flag || value < minimum) {
                     minimum = value;
@@ -155,16 +161,12 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
     public:
         RotationMinimizer(int N, int r, Td* rglrr, std::complex<Td>* unitroots) : N(N),
-        r(r), unitroots(unitroots), active_indices_as_bool(N) {
-            glrr = new std::complex<Td>[r + 1];
+            r(r), glrr(new TComplex[r+1], OrdinaryArrayDeleter<TComplex>()),
+            unitroots(unitroots), active_indices_as_bool(N) {
             for (int i = 0; i < r + 1; i++)
-                glrr[i] = rglrr[i];
+                glrr.get()[i] = rglrr[i];
 
             SEARCH_IT = getSearchIt<horner_scheme>();
-        }
-
-        ~RotationMinimizer() {
-            delete[] glrr;
         }
 
         void findMinimum(std::complex<Td>* A_f, Td& alpha) {
@@ -178,7 +180,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
 
             std::complex<Td> cur_rot(cos(alpha), sin(alpha));
             for (i = 0; i < N; i++) {
-                A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
+                A_f[i] = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[i] * cur_rot);
                 value = norm(A_f[i]);
                 if (new_idx == -1 || value < cur_minimum) {
                     new_idx = i;
@@ -204,7 +206,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
                 bool min_flag = true;
 
                 for (i = 0; i < N; i++) {
-                    A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
+                    A_f[i] = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[i] * cur_rot);
                     value = norm(A_f[i]);
                     if (min_flag || value < cur_minimum) {
                         new_idx = i;

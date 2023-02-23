@@ -1,9 +1,19 @@
-#include <stdlib.h>
 #include <complex>
 #include <cmath>
+#include <exception>
+#include <memory>
+#include <stdlib.h>
+
 #include <R.h>
 #include <Rinternals.h>
 #include <fftw3.h>
+
+#include "alloc.h"
+
+
+namespace {
+    using DoubleComplex = std::complex<double>;
+}
 
 SEXP generic_mul(SEXP vexp,
     SEXP leftcholexp,
@@ -25,64 +35,62 @@ SEXP generic_mul(SEXP vexp,
     std::complex<double>* seriesfft =
         reinterpret_cast<std::complex<double>*>(COMPLEX(seriesfftexp));
 
-    SEXP xexp = PROTECT(allocVector(REALSXP, L));
+    try {
+        SexpWrapper xexp(allocVector(REALSXP, L));
 
-    double* x = REAL(xexp);
+        double* x = REAL(xexp);
 
-    for (int i = 0; i < L; i++) {
-        x[i] = 0;
-    }
-
-    fftw_complex* input_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-    fftw_complex* output_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-
-    std::complex<double>* input =
-        reinterpret_cast<std::complex<double>*>(input_fftw);
-    std::complex<double>* output =
-        reinterpret_cast<std::complex<double>*>(output_fftw);
-
-    for (int i = 0; i < N; i++) {
-        input[i] = 0;
-        output[i] = 0;
-    }
-
-    //right_chol_mat %*% v
-    for (int i = 0; i < K; i++)
-        for (int j = 0; j < std::min(i + 1, Kp); j++) {
-            input[K - i - 1] += rightchol[j * K + i] * v[i - j];
+        for (int i = 0; i < L; i++) {
+            x[i] = 0;
         }
 
-    fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw, output_fftw,
-        FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
+        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<fftw_complex> output_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
 
-    for (int i = 0; i < N; i++) {
-        input[i] = output[i] * seriesfft[i];
-    }
+        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
+        DoubleComplex* output = reinterpret_cast<DoubleComplex*>(output_fftw.get());
 
-    for (int i = 0; i < N; i++) {
-        output[i] = 0;
-    }
-
-    my_plan = fftw_plan_dft_1d(N, input_fftw, output_fftw,
-        FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
-
-    for (int i = 0; i < L; i++)
-        for (int j = 0; j < std::min(i + 1, Lp); j++) {
-            x[i - j] += leftchol[j * L + i] * output[i + K - 1].real() / N;
+        for (int i = 0; i < N; i++) {
+            input[i] = 0;
+            output[i] = 0;
         }
 
-    fftw_free(input_fftw);
-    fftw_free(output_fftw);
+        //right_chol_mat %*% v
+        for (int i = 0; i < K; i++)
+            for (int j = 0; j < std::min(i + 1, Kp); j++) {
+                input[K - i - 1] += rightchol[j * K + i] * v[i - j];
+            }
 
-    UNPROTECT(1);
+        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+            FFTW_FORWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
 
-    return xexp;
+        for (int i = 0; i < N; i++) {
+            input[i] = output[i] * seriesfft[i];
+        }
+
+        for (int i = 0; i < N; i++) {
+            output[i] = 0;
+        }
+
+        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+            FFTW_BACKWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
+
+        for (int i = 0; i < L; i++)
+            for (int j = 0; j < std::min(i + 1, Lp); j++) {
+                x[i - j] += leftchol[j * L + i] * output[i + K - 1].real() / N;
+            }
+
+        return xexp;
+    } catch (std::exception& e) {
+        error(e.what());
+        return vexp;
+    }
 }
 
 SEXP generic_diag_one_triple(SEXP uexp,
@@ -104,76 +112,72 @@ SEXP generic_diag_one_triple(SEXP uexp,
     double* leftchol = REAL(leftcholexp);
     double* rightchol = REAL(rightcholexp);
 
-    SEXP xexp = PROTECT(allocVector(REALSXP, N));
+    try {
+        SexpWrapper xexp(allocVector(REALSXP, N));
 
-    double* x = REAL(xexp);
+        double* x = REAL(xexp);
 
-    fftw_complex* input_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-    fftw_complex* output_L_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-    fftw_complex* output_K_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
+        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<fftw_complex> output_L_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<fftw_complex> output_K_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
 
-    std::complex<double>* input =
-        reinterpret_cast<std::complex<double>*>(input_fftw);
-    std::complex<double>* output_L =
-        reinterpret_cast<std::complex<double>*>(output_L_fftw);
-    std::complex<double>* output_K =
-        reinterpret_cast<std::complex<double>*>(output_K_fftw);
+        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
+        DoubleComplex* output_L = reinterpret_cast<DoubleComplex*>(output_L_fftw.get());
+        DoubleComplex* output_K = reinterpret_cast<DoubleComplex*>(output_K_fftw.get());
 
-    for (int i = 0; i < N; i++) {
-        input[i] = 0;
-        output_L[i] = 0;
-        output_K[i] = 0;
-    }
-
-    //left_chol_mat %*% u
-    for (int i = 0; i < L; i++)
-        for (int j = 0; j < std::min(i + 1, Lp); j++) {
-            input[i] += leftchol[j * L + i] * u[i - j];
+        for (int i = 0; i < N; i++) {
+            input[i] = 0;
+            output_L[i] = 0;
+            output_K[i] = 0;
         }
 
-    fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw, output_L_fftw,
-        FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
+        //left_chol_mat %*% u
+        for (int i = 0; i < L; i++)
+            for (int j = 0; j < std::min(i + 1, Lp); j++) {
+                input[i] += leftchol[j * L + i] * u[i - j];
+            }
 
-    for (int i = 0; i < N; i++) {
-        input[i] = 0;
-    }
+        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_L_fftw.get(),
+            FFTW_FORWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
 
-    //right_chol_mat %*% u
-    for (int i = 0; i < K; i++)
-        for (int j = 0; j < std::min(i + 1, Kp); j++) {
-            input[i] += rightchol[j * K + i] * v[i - j];
+        for (int i = 0; i < N; i++) {
+            input[i] = 0;
         }
 
-    my_plan = fftw_plan_dft_1d(N, input_fftw, output_K_fftw,
-        FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
+        //right_chol_mat %*% u
+        for (int i = 0; i < K; i++)
+            for (int j = 0; j < std::min(i + 1, Kp); j++) {
+                input[i] += rightchol[j * K + i] * v[i - j];
+            }
 
-    for (int i = 0; i < N; i++) {
-        input[i] = output_L[i] * output_K[i];
+        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_K_fftw.get(),
+            FFTW_FORWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
+
+        for (int i = 0; i < N; i++) {
+            input[i] = output_L[i] * output_K[i];
+        }
+
+
+        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_K_fftw.get(),
+            FFTW_BACKWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
+
+        for (int i = 0; i < N; i++)
+            x[i] = output_K[i].real() / N;
+
+        return xexp;
+    } catch (std::exception& e) {
+        error(e.what());
+        return uexp;
     }
-
-
-    my_plan = fftw_plan_dft_1d(N, input_fftw, output_K_fftw,
-        FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
-
-    for (int i = 0; i < N; i++)
-        x[i] = output_K[i].real() / N;
-
-    fftw_free(input_fftw);
-    fftw_free(output_L_fftw);
-    fftw_free(output_K_fftw);
-
-    UNPROTECT(1);
-
-    return xexp;
 }
 
 SEXP hlra_fft_common(SEXP seriesexp, bool direction) {
@@ -183,51 +187,49 @@ SEXP hlra_fft_common(SEXP seriesexp, bool direction) {
     std::complex<double>* series =
         reinterpret_cast<std::complex<double>*>(COMPLEX(seriesexp));
 
-    SEXP xexp = PROTECT(allocVector(CPLXSXP, N));
+    try {
+        SexpWrapper xexp(allocVector(CPLXSXP, N));
 
-    std::complex<double>* x =
-        reinterpret_cast<std::complex<double>*>(COMPLEX(xexp));
+        std::complex<double>* x =
+            reinterpret_cast<std::complex<double>*>(COMPLEX(xexp));
 
-    for (int i = 0; i < N; i++) {
-        x[i] = 0;
-    }
-
-    fftw_complex* input_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-    fftw_complex* output_fftw = reinterpret_cast<fftw_complex*>(
-        fftw_malloc(sizeof(fftw_complex) * N));
-
-    std::complex<double>* input =
-        reinterpret_cast<std::complex<double>*>(input_fftw);
-    std::complex<double>* output =
-        reinterpret_cast<std::complex<double>*>(output_fftw);
-
-    for (int i = 0; i < N; i++) {
-        input[i] = series[i];
-        output[i] = 0;
-    }
-
-    fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw, output_fftw,
-        direction ? FFTW_FORWARD : FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftw_execute(my_plan);
-    fftw_destroy_plan(my_plan);
-
-    if (direction) {
         for (int i = 0; i < N; i++) {
-            x[i] = output[i];
+            x[i] = 0;
         }
-    } else {
+
+        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<fftw_complex> output_fftw(FftwArrayAllocator<fftw_complex>(N),
+            FftwArrayDeleter<fftw_complex>());
+
+        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
+        DoubleComplex* output = reinterpret_cast<DoubleComplex*>(output_fftw.get());
+
         for (int i = 0; i < N; i++) {
-            x[i] = output[i] / (double)N;
+            input[i] = series[i];
+            output[i] = 0;
         }
+
+        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+            direction ? FFTW_FORWARD : FFTW_BACKWARD, FFTW_ESTIMATE);
+        fftw_execute(my_plan);
+        fftw_destroy_plan(my_plan);
+
+        if (direction) {
+            for (int i = 0; i < N; i++) {
+                x[i] = output[i];
+            }
+        } else {
+            for (int i = 0; i < N; i++) {
+                x[i] = output[i] / (double)N;
+            }
+        }
+
+        return xexp;
+    } catch (std::exception& e) {
+        error(e.what());
+        return seriesexp;
     }
-
-    fftw_free(input_fftw);
-    fftw_free(output_fftw);
-
-    UNPROTECT(1);
-
-    return xexp;
 }
 
 SEXP hlra_fft(SEXP seriesexp) {
