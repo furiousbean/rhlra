@@ -17,9 +17,9 @@
 
 
 SEXP eval_basis(SEXP Nexp, SEXP GLRRexp, bool compensated) {
-    int N = INTEGER(Nexp)[0];
-    int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
-    int r = size - 1;
+    std::size_t N = INTEGER(Nexp)[0];
+    std::size_t size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
+    std::size_t r = size - 1;
 
     try {
         SexpWrapper basis_exp(allocMatrix(CPLXSXP, N, r));
@@ -76,15 +76,12 @@ SEXP eval_basis(SEXP Nexp, SEXP GLRRexp, bool compensated) {
     }
 }
 
-SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
-    SEXP AFexp,
-    SEXP ALPHAexp,
-    SEXP TAUexp,
-    SEXP SIGNALexp) {
-    int N = INTEGER(Nexp)[0];
-    int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
-    int r = size - 1;
-    int tau = INTEGER(TAUexp)[0] - 1;
+SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp, SEXP AFexp,
+    SEXP ALPHAexp, SEXP TAUexp, SEXP SIGNALexp) {
+    std::size_t N = INTEGER(Nexp)[0];
+    std::size_t size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
+    std::size_t r = size - 1;
+    std::size_t tau = INTEGER(TAUexp)[0] - 1;
 
     try {
         SexpWrapper xexp(allocMatrix(CPLXSXP, N, r));
@@ -103,15 +100,12 @@ SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp,
     }
 }
 
-SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp,
-    SEXP AFexp,
-    SEXP ALPHAexp,
-    SEXP TAUexp,
-    SEXP SIGNALexp) {
-    int N = INTEGER(Nexp)[0];
-    int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
-    int r = size - 1;
-    int tau = INTEGER(TAUexp)[0] - 1;
+SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp, SEXP AFexp,
+    SEXP ALPHAexp, SEXP TAUexp, SEXP SIGNALexp) {
+    std::size_t N = INTEGER(Nexp)[0];
+    std::size_t size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
+    std::size_t r = size - 1;
+    std::size_t tau = INTEGER(TAUexp)[0] - 1;
 
     try {
         SexpWrapper xexp(allocVector(CPLXSXP, N));
@@ -130,9 +124,9 @@ SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp,
 }
 
 SEXP eval_tangent_basis(SEXP Nexp, SEXP GLRRexp, bool compensated) {
-    int N = INTEGER(Nexp)[0];
-    int size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
-    int r = size - 1;
+    std::size_t N = INTEGER(Nexp)[0];
+    std::size_t size = INTEGER(getAttrib(GLRRexp, R_DimSymbol))[0];
+    std::size_t r = size - 1;
 
     try {
         SexpWrapper xexp(allocMatrix(CPLXSXP, N, 2 * r));
@@ -162,27 +156,15 @@ extern "C" {
     }
 
     SEXP eval_pseudogradC(SEXP Nexp, SEXP GLRRexp,
-        SEXP AFexp,
-        SEXP ALPHAexp,
-        SEXP TAUexp,
-        SEXP SIGNALexp) {
-        return eval_pseudograd(Nexp, GLRRexp,
-        AFexp,
-        ALPHAexp,
-        TAUexp,
-        SIGNALexp);
+        SEXP AFexp, SEXP ALPHAexp, SEXP TAUexp, SEXP SIGNALexp) {
+        return eval_pseudograd(Nexp, GLRRexp, AFexp,
+            ALPHAexp, TAUexp, SIGNALexp);
     }
 
     SEXP eval_sylvester_gradC(SEXP Nexp, SEXP GLRRexp,
-        SEXP AFexp,
-        SEXP ALPHAexp,
-        SEXP TAUexp,
-        SEXP SIGNALexp) {
+        SEXP AFexp, SEXP ALPHAexp, SEXP TAUexp, SEXP SIGNALexp) {
         return eval_sylvester_grad(Nexp, GLRRexp,
-        AFexp,
-        ALPHAexp,
-        TAUexp,
-        SIGNALexp);
+            AFexp, ALPHAexp, TAUexp, SIGNALexp);
     }
 
     SEXP eval_tangent_basis_compensatedC(SEXP Nexp, SEXP GLRRexp) {

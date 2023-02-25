@@ -21,12 +21,12 @@ const int NO_ORTHOGONALIZATION = 0;
 const int ORTHOGONALIZATION    = 1;
 
 template <class Td, int horner_scheme = USUAL_HORNER,
-int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
+    int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
     using TComplex = std::complex<Td>;
     using DoubleComplex = std::complex<double>;
     private:
-        int N;
-        int r;
+        std::size_t N;
+        std::size_t r;
         Td* glrr;
         DoubleComplex* basis;
         DoubleComplex* basis_fourier;
@@ -42,27 +42,28 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
 
             DoubleComplex* data = basis_fourier;
             int size = r;
+            int Ni = N;
 
             int worksz = (4 * size);
             std::shared_ptr<TComplex> work(new TComplex[worksz], OrdinaryArrayDeleter<TComplex>());
             std::shared_ptr<TComplex> tau(new TComplex[size], OrdinaryArrayDeleter<TComplex>());
 
-            F77_CALL(zgeqrf)(&N, &size, (Rcomplex*)data, &N,
+            F77_CALL(zgeqrf)(&Ni, &size, (Rcomplex*)data, &Ni,
                      (Rcomplex*)tau.get(),
                 (Rcomplex*)work.get(), &worksz, &info);
 
             CheckLapackResult(info, "zgeqrf");
 
             F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &N, &info);
+                &Ni, &info);
 
             CheckLapackResult(info, "ztrtri");
 
-            for (int i = 0; i < size; i++) {
-                for (int j = 0; j <= i; j++) {
+            for (std::size_t i = 0; i < size; i++) {
+                for (std::size_t j = 0; j <= i; j++) {
                     qrinvmat[i * size + j] = data[i * N + j];
                 }
-                for (int j = i + 1; j < size; j++) {
+                for (std::size_t j = i + 1; j < size; j++) {
                     qrinvmat[i * size + j] = 0;
                 }
             }
@@ -71,8 +72,8 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
         void eval_z_a_fourier() {
             fill_fourier_matrix(basis_fourier, N, r, 1, unitroots);
 
-            for (int j = 0; j < r; j++)
-                for (int i = 0; i < N; i++) {
+            for (std::size_t j = 0; j < r; j++)
+                for (std::size_t i = 0; i < N; i++) {
                     basis_fourier[i + j * N] /= A_f[i];
                 }
 
@@ -83,12 +84,12 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
 
                 apply_qr_A();
 
-                for (int i = 0; i < r; i++) {
+                for (std::size_t i = 0; i < r; i++) {
                     curpoly[0] = 0;
-                    for (int j = 0; j < r; j++)
+                    for (std::size_t j = 0; j < r; j++)
                         curpoly[j + 1] = qrinvmat[i * r + j];
 
-                    for (int j = 0; j < N; j++) {
+                    for (std::size_t j = 0; j < N; j++) {
                         basis_fourier[i * N + j] = cpphorner<Td, horner_scheme>(curpoly, r + 1, unitroots[j]) /
                         (A_f[j]);
                     }
@@ -97,7 +98,7 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
         }
 
     public:
-        CalculateBasis(int N, int r, Td* glrr, std::complex<Td>* basis,
+        CalculateBasis(std::size_t N, std::size_t r, Td* glrr, std::complex<Td>* basis,
             std::complex<Td>* basis_fourier, std::complex<Td>* unitroots,
             std::complex<Td>* A_f, Td* alpha, std::complex<Td>* qrinvmat): N(N), r(r), glrr(glrr),
             basis(basis), basis_fourier(basis_fourier), unitroots(unitroots),
@@ -125,21 +126,21 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
             my_plan = fftw_plan_dft_1d(N, in_fftw.get(), out_fftw.get(),
                 FFTW_BACKWARD, FFTW_ESTIMATE);
             Td sqrtN = std::sqrt(N);
-            for (int i = 0; i < r; i++) {
-                for (int j = 0; j < N; j++) {
+            for (std::size_t i = 0; i < r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
                     in[j] = basis_fourier[i * N + j];
                 }
 
                 fftw_execute(my_plan);
-                for (int j = 0; j < N; j++) {
+                for (std::size_t j = 0; j < N; j++) {
                     basis[i * N + j] = out[j] / sqrtN;
                 }
             }
 
             DoubleComplex* rotation = out;
             fill_rotation(rotation, N, alpha);
-            for (int i = 0; i < r; i++) {
-                for (int j = 0; j < N; j++) {
+            for (std::size_t i = 0; i < r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
                     basis[i * N + j] *= rotation[j];
                 }
             }
