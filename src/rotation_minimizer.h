@@ -3,6 +3,7 @@
 
 #include <complex>
 #include <complex.h>
+#include <limits>
 #include <math.h>
 #include <memory>
 #include <vector>

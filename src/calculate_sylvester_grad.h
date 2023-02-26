@@ -27,15 +27,17 @@ template <class Td> class CalculateSylvesterGrad {
         TComplex* glrr_comp;
 
         void eval_sylvester_grad_fourier() {
-            std::shared_ptr<fftw_complex> initial_f_vec_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
-            std::shared_ptr<fftw_complex> current_grad_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
+            std::shared_ptr<DoubleComplex> initial_f_vec_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> current_grad_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            DoubleComplex* initial_f_vec = reinterpret_cast<DoubleComplex*>(initial_f_vec_fftw.get());
-            DoubleComplex* current_grad = reinterpret_cast<DoubleComplex*>(current_grad_fftw.get());
+            DoubleComplex* initial_f_vec = initial_f_vec_fftw.get();
+            DoubleComplex* current_grad = current_grad_fftw.get();
 
-            fftw_plan my_plan = fftw_plan_dft_1d(N, initial_f_vec_fftw.get(), current_grad_fftw.get(),
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(initial_f_vec),
+                reinterpret_cast<fftw_complex*>(current_grad),
                 FFTW_FORWARD, FFTW_ESTIMATE);
 
             for (std::size_t i = 0; i < N; i++) {
@@ -62,15 +64,17 @@ template <class Td> class CalculateSylvesterGrad {
         void doWork() {
             eval_sylvester_grad_fourier();
 
-            std::shared_ptr<fftw_complex> in_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
-            std::shared_ptr<fftw_complex> out_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
+            std::shared_ptr<DoubleComplex> in_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> out_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            DoubleComplex* in = reinterpret_cast<DoubleComplex*>(in_fftw.get());
-            DoubleComplex* out = reinterpret_cast<DoubleComplex*>(out_fftw.get());
+            DoubleComplex* in = in_fftw.get();
+            DoubleComplex* out = out_fftw.get();
 
-            fftw_plan my_plan = fftw_plan_dft_1d(N, in_fftw.get(), out_fftw.get(),
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(in),
+                reinterpret_cast<fftw_complex*>(out),
                 FFTW_BACKWARD, FFTW_ESTIMATE);
 
             for (std::size_t j = 0; j < N; j++) {

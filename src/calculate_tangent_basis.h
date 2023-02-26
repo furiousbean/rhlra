@@ -54,7 +54,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
                 vmat[i] = 0;
             }
 
-            for (std::size_t i = 0; i < size; i++) {
+            for (std::size_t i = 0; i < (std::size_t)size; i++) {
                 for (std::size_t j = 0; j <= i; j++) {
                     vmat[i * sz2 + (perm.get()[j] - 1)] = data[i * N + j];
                 }
@@ -140,15 +140,17 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
 
             eval_z_a2_fourier();
 
-            std::shared_ptr<fftw_complex> in_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
-            std::shared_ptr<fftw_complex> out_fftw(FftwArrayAllocator<fftw_complex>(N),
-                FftwArrayDeleter<fftw_complex>());
+            std::shared_ptr<DoubleComplex> in_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> out_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            DoubleComplex* in = reinterpret_cast<DoubleComplex*>(in_fftw.get());
-            DoubleComplex* out = reinterpret_cast<DoubleComplex*>(out_fftw.get());
+            DoubleComplex* in = in_fftw.get();
+            DoubleComplex* out = out_fftw.get();
 
-            fftw_plan my_plan = fftw_plan_dft_1d(N, in_fftw.get(), out_fftw.get(),
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(in),
+                reinterpret_cast<fftw_complex*>(out),
                 FFTW_BACKWARD, FFTW_ESTIMATE);
 
             double sqrtN = std::sqrt(N);

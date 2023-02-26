@@ -44,13 +44,13 @@ SEXP generic_mul(SEXP vexp,
             x[i] = 0;
         }
 
-        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
-        std::shared_ptr<fftw_complex> output_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<DoubleComplex> input_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
+        std::shared_ptr<DoubleComplex> output_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
 
-        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
-        DoubleComplex* output = reinterpret_cast<DoubleComplex*>(output_fftw.get());
+        DoubleComplex* input = input_fftw.get();
+        DoubleComplex* output = output_fftw.get();
 
         for (std::size_t i = 0; i < N; i++) {
             input[i] = 0;
@@ -63,7 +63,9 @@ SEXP generic_mul(SEXP vexp,
                 input[K - i - 1] += rightchol[j * K + i] * v[i - j];
             }
 
-        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+        fftw_plan my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output),
             FFTW_FORWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
@@ -76,7 +78,9 @@ SEXP generic_mul(SEXP vexp,
             output[i] = 0;
         }
 
-        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+        my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output),
             FFTW_BACKWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
@@ -117,16 +121,16 @@ SEXP generic_diag_one_triple(SEXP uexp,
 
         double* x = REAL(xexp);
 
-        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
-        std::shared_ptr<fftw_complex> output_L_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
-        std::shared_ptr<fftw_complex> output_K_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<DoubleComplex> input_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
+        std::shared_ptr<DoubleComplex> output_L_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
+        std::shared_ptr<DoubleComplex> output_K_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
 
-        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
-        DoubleComplex* output_L = reinterpret_cast<DoubleComplex*>(output_L_fftw.get());
-        DoubleComplex* output_K = reinterpret_cast<DoubleComplex*>(output_K_fftw.get());
+        DoubleComplex* input = input_fftw.get();
+        DoubleComplex* output_L = output_L_fftw.get();
+        DoubleComplex* output_K = output_K_fftw.get();
 
         for (std::size_t i = 0; i < N; i++) {
             input[i] = 0;
@@ -140,7 +144,9 @@ SEXP generic_diag_one_triple(SEXP uexp,
                 input[i] += leftchol[j * L + i] * u[i - j];
             }
 
-        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_L_fftw.get(),
+        fftw_plan my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output_L),
             FFTW_FORWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
@@ -155,7 +161,9 @@ SEXP generic_diag_one_triple(SEXP uexp,
                 input[i] += rightchol[j * K + i] * v[i - j];
             }
 
-        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_K_fftw.get(),
+        my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output_K),
             FFTW_FORWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
@@ -165,7 +173,9 @@ SEXP generic_diag_one_triple(SEXP uexp,
         }
 
 
-        my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_K_fftw.get(),
+        my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output_K),
             FFTW_BACKWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
@@ -196,20 +206,22 @@ SEXP hlra_fft_common(SEXP seriesexp, bool direction) {
             x[i] = 0;
         }
 
-        std::shared_ptr<fftw_complex> input_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
-        std::shared_ptr<fftw_complex> output_fftw(FftwArrayAllocator<fftw_complex>(N),
-            FftwArrayDeleter<fftw_complex>());
+        std::shared_ptr<DoubleComplex> input_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
+        std::shared_ptr<DoubleComplex> output_fftw(FftwArrayAllocator<DoubleComplex>(N),
+            FftwArrayDeleter<DoubleComplex>());
 
-        DoubleComplex* input = reinterpret_cast<DoubleComplex*>(input_fftw.get());
-        DoubleComplex* output = reinterpret_cast<DoubleComplex*>(output_fftw.get());
+        DoubleComplex* input = input_fftw.get();
+        DoubleComplex* output = output_fftw.get();
 
         for (std::size_t i = 0; i < N; i++) {
             input[i] = series[i];
             output[i] = 0;
         }
 
-        fftw_plan my_plan = fftw_plan_dft_1d(N, input_fftw.get(), output_fftw.get(),
+        fftw_plan my_plan = fftw_plan_dft_1d(N,
+            reinterpret_cast<fftw_complex*>(input),
+            reinterpret_cast<fftw_complex*>(output),
             direction ? FFTW_FORWARD : FFTW_BACKWARD, FFTW_ESTIMATE);
         fftw_execute(my_plan);
         fftw_destroy_plan(my_plan);
