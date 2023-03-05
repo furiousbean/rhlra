@@ -55,7 +55,8 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
 }
 
 oblique_hankel_svd <- function(this, series, r, left_chol_mat, right_chol_mat,
-                               left_chol, right_chol, high_rank, svd_type = "trlan") {
+                               left_chol, right_chol, high_rank,
+                               svd_type = "trlan", overrank = 2) {
 
     ops_for_hankel <- prepare_ops_for_hankel_svd(this, series, left_chol_mat, right_chol_mat)
 
@@ -75,10 +76,39 @@ oblique_hankel_svd <- function(this, series, r, left_chol_mat, right_chol_mat,
     result <- NULL
 
     lapack_svd <- function() {
-        trmat <- get_oblique_trmat(this, series, ops_for_hankel$L, left_chol, right_chol)
+        trmat <- get_oblique_trmat(this, series, ops_for_hankel$L,
+                                   left_chol, right_chol)
 
         result <- svd(trmat, nu = desired_rank, nv = desired_rank)
         result$d <- result$d[1:desired_rank]
+        result
+    }
+
+    keep_matrix <- function(x, rank) {
+        if (rank <= 1) {
+            x <- matrix(x, ncol = rank)
+        }
+        x
+    }
+
+    propack_svd <- function() {
+        svd_rank <- min(ops_for_hankel$L, ops_for_hankel$K,
+                        desired_rank + overrank)
+        result <- propack.svd(trmat, svd_rank)
+        result$d <- result$d[1:desired_rank]
+        result$u <- keep_matrix(result$u[, 1:desired_rank], desired_rank)
+        result$v <- keep_matrix(result$v[, 1:desired_rank], desired_rank)
+        result
+    }
+
+    trlan_svd <- function() {
+        svd_rank <- min(ops_for_hankel$L, ops_for_hankel$K,
+                        desired_rank + overrank)
+        result <- trlan.svd(trmat, svd_rank)
+        result$d <- result$d[1:desired_rank]
+        result$u <- keep_matrix(result$u[, 1:desired_rank], desired_rank)
+        result$v <- sapply(1:desired_rank,
+            function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
         result
     }
 
@@ -87,22 +117,25 @@ oblique_hankel_svd <- function(this, series, r, left_chol_mat, right_chol_mat,
             result <- lapack_svd()
         } else {
             if (svd_type == "propack") {
-                result <- propack.svd(trmat, desired_rank)
+                result <- propack_svd()
             } else {
-                result <- trlan.svd(trmat, desired_rank)
-                V <- sapply(1:desired_rank, function(i) ops_for_hankel$tmul(result$u[, i]) / result$d[i])
-                result$v <- V
+                if (svd_type == "trlan") {
+                    result <- trlan_svd()
+                } else {
+                    stop("Unknown SVD type")
+                }
             }
         }
     }, error = function(msg) {
-        if (grepl('Please use LAPACK or EISPACK instead.', msg, fixed=TRUE)) {
+        if (grepl("Please use LAPACK or EISPACK instead.", msg, fixed = TRUE)) {
             cat(paste0("Fallback to SVD due to ", msg, "\n"))
             result <<- lapack_svd()
         } else {
             stop(msg)
         }
     }, warning = function(msg) {
-        if (grepl('TRLAN: info->ned (1) is large relative to the matrix dimension', msg, fixed=TRUE)) {
+        if (grepl("TRLAN: info->ned (1) is large relative to the matrix dimension",
+            msg, fixed = TRUE)) {
             cat(paste0("Fallback to SVD due to ", msg, "\n"))
             result <<- lapack_svd()
         } else {
@@ -115,8 +148,8 @@ oblique_hankel_svd <- function(this, series, r, left_chol_mat, right_chol_mat,
 
     if (high_rank) {
         answer$d <- answer$d[(desired_rank - r + 1):desired_rank]
-        answer$u <- matrix(answer$u[, (desired_rank - r + 1):desired_rank], nrow = answer$L)
-        answer$v <- matrix(answer$v[, (desired_rank - r + 1):desired_rank], nrow = answer$L)
+        answer$u <- keep_matrix(answer$u[, (desired_rank - r + 1):desired_rank], r)
+        answer$v <- keep_matrix(answer$v[, (desired_rank - r + 1):desired_rank], r)
     }
 
     answer
@@ -337,4 +370,4 @@ cadzow <- function(this, series, r, left_diags, right_diags,
     answer
 }
 
-cadzow_add_pars_names <- c("cadzow_epsilon", "cadzow_it_limit", "svd_type")
+cadzow_add_pars_names <- c("cadzow_epsilon", "cadzow_it_limit", "svd_type", "overrank")
