@@ -20,8 +20,6 @@ expand_by_mask <- function(series, signal) {
     series
 }
 
-sapply_ns <- function(...) sapply(..., simplify = FALSE)
-
 get_rev_row_form <- function(x) {
     trip <- as(x, "TsparseMatrix")
 
@@ -141,7 +139,7 @@ unit_envelope <- function(series, bignumber = 1e6) {
     if (!is.list(series)) {
         return(do_job(series))
     } else {
-        return(sapply_ns(series, do_job))
+        return(lapply(series, do_job))
     }
 }
 

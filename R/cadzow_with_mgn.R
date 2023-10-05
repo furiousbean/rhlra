@@ -54,18 +54,18 @@ prepare_cadzow_with_mgn.1dm <- function(this, series, L, r, coefs,
         }
     }
 
-    left_diags <- sapply_ns(coefs, function(x) inv_ac_diags(L, x))
+    left_diags <- lapply(coefs, function(x) inv_ac_diags(L, x))
 
-    right_diags <- sapply_ns(seq_along(series), function(i)
+    right_diags <- lapply(seq_along(series), function(i)
         list(right_diag[[i]][effective_mask_for_weights(series[[i]], L)]))
 
     list2env(prepare_cadzow(this, left_diags, right_diags), environment())
 
     common_expand_by_mask <- function(x) mapply(expand_by_mask, series, x, SIMPLIFY = FALSE)
 
-    envelope_d <- sapply_ns(seq_along(series),
+    envelope_d <- lapply(seq_along(series),
                          function(i) Diagonal(length(series[[i]]), 1/envelope[[i]]))
-    diags <- sapply_ns(seq_along(series),
+    diags <- lapply(seq_along(series),
                     function(i) inv_ac_diags(length(series[[i]]), coefs[[i]]))
     ideal_weights <- sapply(seq_along(series), function(i)
         envelope_d[[i]] %*% band_mat_from_diags(diags[[i]]) %*% envelope_d[[i]])

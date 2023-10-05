@@ -8,7 +8,7 @@ get_oblique_trmat.1d <- function(this, series, L, left_chol, right_chol) {
 }
 
 get_oblique_trmat.1dm <- function(this, series, L, left_chol, right_chol) {
-    do.call(cbind, sapply_ns(seq_along(series), function(i)
+    do.call(cbind, lapply(seq_along(series), function(i)
         get_oblique_trmat.1d(this, series[[i]], L, left_chol[[i]], right_chol[[i]])))
 }
 
@@ -31,10 +31,10 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
     N <- sapply(series, length)
     L <- dim(left_chol_mat[[1]])[1]
     Ks <- sapply(right_chol_mat, function(right_chol_mat) dim(right_chol_mat)[1])
-    Ksplits <- get_splits(sapply_ns(Ks, numeric))
+    Ksplits <- get_splits(lapply(Ks, numeric))
     K <- sum(Ks)
 
-    series_ffts <- sapply_ns(seq_along(series),
+    series_ffts <- lapply(seq_along(series),
                           function(i) hlra_fft(series[[i]]))
     mul <- function(v) {
         vs <- split_into_series_list(v, Ksplits)
@@ -46,7 +46,7 @@ prepare_ops_for_hankel_svd.1dm <- function(this, series, left_chol_mat, right_ch
     }
 
     tmul <- function(v) {
-        result <- glue_series_lists(sapply_ns(seq_along(series), function(i) {
+        result <- glue_series_lists(lapply(seq_along(series), function(i) {
             generic_tmul(v, left_chol_mat = left_chol_mat[[i]],
             right_chol_mat = right_chol_mat[[i]], series_fft = series_ffts[[i]])}))
         result
@@ -182,11 +182,11 @@ oblique_hankel_diag_averaging.1dm <- function(this, reslist, left_chol_mat, righ
     N <- reslist$N
     L <- reslist$L
     Ks <- N - L + 1
-    Ksplits <- get_splits(sapply_ns(Ks, numeric))
+    Ksplits <- get_splits(lapply(Ks, numeric))
 
     vs <- split_matrix_into_matrix_list(reslist$v, Ksplits)
 
-    sapply_ns(seq_along(N), function(i) {
+    lapply(seq_along(N), function(i) {
         reslist1d <- list(N = N[[i]], L = L,
                           d = reslist$d, u = reslist$u, v = vs[[i]], r = reslist$r)
         oblique_hankel_diag_averaging.1d(this, reslist1d, left_chol_mat[[i]], right_chol_mat[[i]],
@@ -212,13 +212,13 @@ prepare_cadzow_iterations.1d <- function(this, series, weights_mat) {
 }
 
 prepare_cadzow_iterations.1dm <- function(this, series, weights_mat) {
-    weights_chol <- sapply_ns(weights_mat, Cholesky)
-    series <- sapply_ns(series, as.numeric)
+    weights_chol <- lapply(weights_mat, Cholesky)
+    series <- lapply(series, as.numeric)
     splits <- get_splits(series)
     inner_product <- function(x, y) sum(mapply(generic_inner_product, x, y, weights_mat))
     minus <- function(x, y) mapply("-", x, y, SIMPLIFY = FALSE)
     empty_last_steps <- matrix(numeric(0), nrow = sum(sapply(series, length)))
-    empty_answer <- sapply(sapply_ns(series, length), numeric)
+    empty_answer <- sapply(lapply(series, length), numeric)
     glue <- function(x) glue_series_lists(x)
     unglue <- function(x) split_into_series_list(x, splits)
 
@@ -267,7 +267,7 @@ cadzow_iterations <- function(this, series, r, left_chol_mat, right_chol_mat,
         }
 
         if (!is.null(sylvester_nulling)) {
-            proj <- sapply_ns(seq_along(proj), function(i) {
+            proj <- lapply(seq_along(proj), function(i) {
                 series <- proj[[i]]
                 null_len <- sylvester_nulling[i]
                 if (null_len > 0) {
@@ -323,16 +323,16 @@ prepare_cadzow.1d <- function(this, left_diags, right_diags) {
 }
 
 prepare_cadzow.1dm <- function(this, left_diags, right_diags) {
-    left_mat <- sapply_ns(left_diags, band_mat_from_diags)
-    left_chol <- sapply_ns(left_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
-    left_chol_mat <- sapply_ns(left_chol, function(x) as(x, "Matrix"))
+    left_mat <- lapply(left_diags, band_mat_from_diags)
+    left_chol <- lapply(left_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
+    left_chol_mat <- lapply(left_chol, function(x) as(x, "Matrix"))
 
-    right_mat <- sapply_ns(right_diags, band_mat_from_diags)
-    right_chol <- sapply_ns(right_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
-    right_chol_mat <- sapply_ns(right_chol, function(x) as(x, "Matrix"))
+    right_mat <- lapply(right_diags, band_mat_from_diags)
+    right_chol <- lapply(right_mat, function(x) Cholesky(x, perm = FALSE, LDL = FALSE))
+    right_chol_mat <- lapply(right_chol, function(x) as(x, "Matrix"))
 
-    left_chol_mat <- sapply_ns(left_chol_mat, get_rev_row_form)
-    right_chol_mat <- sapply_ns(right_chol_mat, get_rev_row_form)
+    left_chol_mat <- lapply(left_chol_mat, get_rev_row_form)
+    right_chol_mat <- lapply(right_chol_mat, get_rev_row_form)
 
     weights <- mapply(function(left_diags, right_diags) get_matrix_weight_matrix(left_diags, right_diags),
                       left_diags, right_diags)

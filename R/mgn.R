@@ -51,7 +51,7 @@ get_glrr_from_nonlrf_series.1dm <- function(this, series, r) {
     L <- r + 1
     Ns <- sapply(series, length)
     trmat <- do.call(cbind,
-         sapply_ns(series, function(x) traj_matrix(x[!is.na(x)], L)))
+         lapply(series, function(x) traj_matrix(x[!is.na(x)], L)))
     svd(trmat)$u[, L]
 }
 
@@ -80,9 +80,9 @@ weighted_project_onto_zspace_coef_rot.1d <- function(this, series, zspace, chol_
 }
 
 weighted_project_onto_zspace_coef_rot.1dm <- function(this, series, zspace, chol_weights) {
-    list(zspace_rot = do.call(rbind, sapply_ns(seq_along(series),
+    list(zspace_rot = do.call(rbind, lapply(seq_along(series),
                     function(i) as.matrix(chol_weights[[i]] %*% zspace[[i]]))),
-        series_rot = glue_series_lists(sapply_ns(seq_along(series),
+        series_rot = glue_series_lists(lapply(seq_along(series),
                     function(i) as.numeric(chol_weights[[i]] %*% series[[i]]))))
 }
 
@@ -141,7 +141,7 @@ prepare_find_step.1dm <- function(this, signal, series, r, j, zspace_pack, weigh
     class(metathis) <- class(metathis)[class(metathis) != '1dm']
     class(metathis) <- append(class(metathis), "1d")
 
-    pseudograd <- sapply_ns(seq_along(series), function(k) {
+    pseudograd <- lapply(seq_along(series), function(k) {
         pfs_1d <- prepare_find_step(metathis, signal[[k]], series[[k]], r, j,
                                     zspace_pack[[k]], weights_chol[[k]],
                                     sylvester_problem)
@@ -212,7 +212,7 @@ prepare_mgn.1d <- function(this, series, r, weights, weights_chol) {
 }
 
 prepare_mgn.1dm <- function(this, series, r, weights, weights_chol) {
-    series <- sapply_ns(series, as.numeric)
+    series <- lapply(series, as.numeric)
 
     for (i in seq_along(series)) {
         if (any(is.na(series[[i]]))) {
@@ -222,14 +222,14 @@ prepare_mgn.1dm <- function(this, series, r, weights, weights_chol) {
 
     splits <- get_splits(series)
     if (is.null(weights_chol)) {
-        weights_chol <- sapply_ns(weights, chol)
+        weights_chol <- lapply(weights, chol)
     }
     N <- sapply(series, length)
     get_zspace_pack <- function(this, Ns, v, weights_chol)
-        sapply_ns(seq_along(Ns),
+        lapply(seq_along(Ns),
                   function(i) generic_get_zspace_pack(this, Ns[i], v, weights_chol[[i]]))
     get_signal <- function(this, x, zspace_pack, weights_chol)
-        sapply_ns(seq_along(x),
+        lapply(seq_along(x),
                   function(i) generic_get_signal(this, x[[i]], zspace_pack[[i]], weights_chol[[i]]))
 
     inner_product <- function(x, y) sum(mapply(generic_inner_product_chol, x, y, weights_chol))

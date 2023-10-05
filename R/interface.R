@@ -40,7 +40,7 @@ hlra_mgn_default_chol <- function(series, weights = 1) {
     if (!is.list(series)) {
         return(band_mat_from_diags(make_series_01_vector(series, weights)))
     } else {
-        return(sapply_ns(seq_along(series), function(i) { band_mat_from_diags(make_series_01_vector(series[[i]], weights[i])) }))
+        return(lapply(seq_along(series), function(i) { band_mat_from_diags(make_series_01_vector(series[[i]], weights[i])) }))
     }
 }
 
@@ -259,13 +259,13 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
         L <- max(poly_orders) + min(poly_orders)
         zero_trails <- L - sapply(polynoms, length)
 
-        input_for_cadzow <- sapply_ns(seq_along(polynoms), function(i)
+        input_for_cadzow <- lapply(seq_along(polynoms), function(i)
             c(numeric(zero_trails[i]), polynoms[[i]], numeric(zero_trails[i])))
         if (is.null(poly_weights)) {
             poly_weights <- rep(1, length(polynoms))
         }
 
-        input_for_weights <- sapply_ns(seq_along(polynoms), function(i)
+        input_for_weights <- lapply(seq_along(polynoms), function(i)
             c(numeric(zero_trails[i]), rep(poly_weights[i], length(polynoms[[i]])), numeric(zero_trails[i])))
 
         right_diag <- sapply(seq_along(polynoms),
@@ -287,10 +287,10 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
                                                     sylvester_nulling = zero_trails,
                                                     high_rank = TRUE)$signal
 
-        sylvmat <- do.call(cbind, sapply_ns(initial_sylvester_approx, function(x) traj_matrix(x, L)))
+        sylvmat <- do.call(cbind, lapply(initial_sylvester_approx, function(x) traj_matrix(x, L)))
         glrr_signals <- as.matrix(svd(sylvmat)$u[, (L-r+1):L], nrow = L)
 
-        glrr_signals_as_list <- sapply_ns(1:r, function(i) as.numeric(glrr_signals[, i]))
+        glrr_signals_as_list <- lapply(1:r, function(i) as.numeric(glrr_signals[, i]))
         initial_poly <- get_glrr_from_nonlrf_series(obj, glrr_signals_as_list, r)
 
         # print(initial_poly)
