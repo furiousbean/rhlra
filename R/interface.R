@@ -62,8 +62,8 @@ hlra_cadzow <- function(series, r, L = default_L(series),
                         left_diags = NULL, right_diags = NULL,
                         debug = FALSE, set_seed = NULL, additional_pars = list()) {
     numeric_check(series)
-    whole_number_check(r)
-    whole_number_check(L)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
 
     obj <- list()
 
@@ -216,6 +216,7 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
                      alpha = 0.1, debug = FALSE, compensated = TRUE,
                      additional_pars = list()) {
     numeric_check(polynoms)
+    whole_number_check(r, "r")
 
     obj <- list()
 
@@ -349,6 +350,8 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
                  envelope = unit_envelope(series),
                  compensated = TRUE, set_seed = NULL, additional_pars = list()) {
     numeric_check(series)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
 
     obj <- list()
 
@@ -446,6 +449,9 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     envelope = unit_envelope(series),
                     compensated = TRUE, set_seed = NULL, additional_pars = list()) {
     numeric_check(series)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
+    whole_number_check(p, "p", 0)
 
     if (p == 0) {
         return(hlra(series, r, L, alpha, debug = debug,

@@ -212,8 +212,10 @@ numeric_check_list <- function(input) {
     }
 }
 
-whole_number_check <- function(input) {
-    if (!(length(input) == 1 && as.integer(input) - input == 0 && input > 0)) {
-        stop("Argument must be a whole positive number")
+whole_number_check <- function(input, argname, lower_bound = 1) {
+    if (!(length(input) == 1 && as.integer(input) - input == 0
+        && input >= lower_bound)) {
+        stop(paste("Argument", argname,
+            "must be a whole number greater or equal than", lower_bound))
     }
 }
