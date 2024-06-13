@@ -6,16 +6,21 @@
 #include <memory>
 #include <stdlib.h>
 
+#include <Rversion.h>
+
 #include "alloc.h"
 #include "rotation_minimizer.h"
 
 
-extern "C" {
+#if R_VERSION < 263168
+    extern "C" {
 
-extern void F77_NAME(ztrtri)(const char* uplo, const char* diag,
-             const int* n, Rcomplex* a, const int* lda,
-             int* info);
-}
+    extern void F77_NAME(ztrtri)(const char* uplo, const char* diag,
+                const int* n, Rcomplex* a, const int* lda,
+                int* info);
+    }
+    #define SHORT_ZTRTRI_CALL
+#endif
 
 const int NO_ORTHOGONALIZATION = 0;
 const int ORTHOGONALIZATION    = 1;
@@ -54,8 +59,13 @@ template <class Td, int horner_scheme = USUAL_HORNER,
 
             CheckLapackResult(info, "zgeqrf");
 
-            F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &Ni, &info);
+            #ifdef SHORT_ZTRTRI_CALL
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &Ni, &info);
+            #else
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &Ni, &info, 0, 0);
+            #endif
 
             CheckLapackResult(info, "ztrtri");
 
