@@ -5,13 +5,16 @@
 #include <complex>
 #include <math.h>
 #include "rotation_minimizer.h"
+#include <Rversion.h>
 
-extern "C" {
-
-extern void F77_NAME(ztrtri)(const char* uplo, const char* diag,
-             const int* n, Rcomplex* a, const int* lda,
-             int* info);
-}
+#if R_VERSION < 263168
+    extern "C" {
+    extern void F77_NAME(ztrtri)(const char* uplo, const char* diag,
+                const int* n, Rcomplex* a, const int* lda,
+                int* info);
+    }
+    #define SHORT_ZTRTRI_CALL
+#endif
 
 const int NO_ORTHOGONALIZATION  = 0;
 const int ORTHOGONALIZATION  = 1;
@@ -47,8 +50,13 @@ int orthogonalization = NO_ORTHOGONALIZATION> class CalculateBasis {
                      (Rcomplex*)tau,
                 (Rcomplex*)work, &worksz, &info);
 
-            F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &N, &info);
+            #ifdef SHORT_ZTRTRI_CALL
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &N, &info);
+            #else
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &N, &info, 0, 0);
+            #endif
 
             for (i = 0; i < size; i++) {
                 for (j = 0; j <= i; j++) {
