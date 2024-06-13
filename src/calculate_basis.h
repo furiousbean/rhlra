@@ -10,12 +10,12 @@
 #include "rotation_minimizer.h"
 
 
-extern "C" {
+/* extern "C" {
 
 extern void F77_NAME(ztrtri)(const char* uplo, const char* diag,
              const int* n, Rcomplex* a, const int* lda,
              int* info);
-}
+} */
 
 const int NO_ORTHOGONALIZATION = 0;
 const int ORTHOGONALIZATION    = 1;
@@ -55,7 +55,7 @@ template <class Td, int horner_scheme = USUAL_HORNER,
             CheckLapackResult(info, "zgeqrf");
 
             F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &Ni, &info);
+                &Ni, &info, 0, 0);
 
             CheckLapackResult(info, "ztrtri");
 

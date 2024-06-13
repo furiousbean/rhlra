@@ -46,7 +46,7 @@ template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasi
             CheckLapackResult(info, "zgeqp3");
 
             F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &Ni, &info);
+                &Ni, &info, 0, 0);
 
             CheckLapackResult(info, "ztrtri");
 
