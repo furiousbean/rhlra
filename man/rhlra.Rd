@@ -2,6 +2,7 @@
 % Please edit documentation in R/interface.R
 \docType{package}
 \name{rhlra}
+\alias{rhlra-package}
 \alias{rhlra}
 \title{rhlra: Hankel Low-Rank Approximation for R package.}
 \description{

@@ -442,7 +442,7 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 #' data("USUnemployment")
 #' series <- log(USUnemployment[, 2])
 #' x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-#' plot(x$signal)
+#' plot(x$signal, type = "b")
 hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
                     initial_ar_coefs = NULL, debug = FALSE,
