@@ -58,5 +58,5 @@ library(Rssa)
 data("USUnemployment")
 series <- log(USUnemployment[, 2])
 x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-plot(x$signal)
+plot(x$signal, type = "b")
 }
