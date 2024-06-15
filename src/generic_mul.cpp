@@ -92,7 +92,7 @@ SEXP generic_mul(SEXP vexp,
 
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return vexp;
     }
 }
@@ -185,7 +185,7 @@ SEXP generic_diag_one_triple(SEXP uexp,
 
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return uexp;
     }
 }
@@ -238,7 +238,7 @@ SEXP hlra_fft_common(SEXP seriesexp, bool direction) {
 
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return seriesexp;
     }
 }

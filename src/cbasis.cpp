@@ -71,7 +71,7 @@ SEXP eval_basis(SEXP Nexp, SEXP GLRRexp, bool compensated) {
 
         return answer_exp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return GLRRexp;
     }
 }
@@ -95,7 +95,7 @@ SEXP eval_pseudograd(SEXP Nexp, SEXP GLRRexp, SEXP AFexp,
         cb.doWork();
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return GLRRexp;
     }
 }
@@ -118,7 +118,7 @@ SEXP eval_sylvester_grad(SEXP Nexp, SEXP GLRRexp, SEXP AFexp,
         cb.doWork();
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return GLRRexp;
     }
 }
@@ -141,7 +141,7 @@ SEXP eval_tangent_basis(SEXP Nexp, SEXP GLRRexp, bool compensated) {
         }
         return xexp;
     } catch (std::exception& e) {
-        error(e.what());
+        error("%s", e.what());
         return GLRRexp;
     }
 }
