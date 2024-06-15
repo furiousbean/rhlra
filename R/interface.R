@@ -3,7 +3,7 @@
 #' This package provides tools for solving Hankel Structured Low-Rank Approximation problems
 #'
 #' @section See Also:
-#' \code{\link{rhlra}}, \code{\link{rhlra_tune}}, \code{\link{rhlra_cadzow}}
+#' \code{\link{hlra}}, \code{\link{hlra_tune}}, \code{\link{hlra_cadzow}}, \code{\link{hlra_mgn}}.
 #'
 #' @docType package
 #' @name rhlra
@@ -40,7 +40,7 @@ hlra_mgn_default_chol <- function(series, weights = 1) {
     if (!is.list(series)) {
         return(band_mat_from_diags(make_series_01_vector(series, weights)))
     } else {
-        return(sapply_ns(seq_along(series), function(i) { band_mat_from_diags(make_series_01_vector(series[[i]], weights[i])) }))
+        return(lapply(seq_along(series), function(i) { band_mat_from_diags(make_series_01_vector(series[[i]], weights[i])) }))
     }
 }
 
@@ -61,17 +61,44 @@ hlra_mgn_default_chol <- function(series, weights = 1) {
 hlra_cadzow <- function(series, r, L = default_L(series),
                         left_diags = NULL, right_diags = NULL,
                         debug = FALSE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
 
     obj <- list()
 
     classes <- character(0)
 
+    K <- NULL
+
+    if (!is.list(series)) {
+        K <- length(series) - L + 1
+    } else {
+        K <- 0
+        sapply(series,
+               function(x) {
+                   if (length(x) < L) {
+                       stop("Dimensionality check fail: L is too big")
+                   }
+                   K <<- K + length(x) - L + 1
+               },
+               simplify = FALSE)
+    }
+
+    if (r >= L) {
+        stop("Dimensionality check fail: r is too big or L is too small")
+    }
+
+    if (r >= K) {
+        stop("Dimensionality check fail: r or L is too big")
+    }
+
     if (!is.list(series)) {
         if (is.null(left_diags)) {
             left_diags <- list(rep(1, L))
             right_diags <- list(rep(1, length(series) - L + 1))
-        }
 
+        }
 
         if (any(is.na(series))) {
             stop("Input series must not contain NA's")
@@ -105,6 +132,9 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
     return(signal_obj)
 }
 
@@ -126,6 +156,7 @@ hlra_cadzow <- function(series, r, L = default_L(series),
 hlra_mgn <- function(series, initial_glrr, weights = NULL,
                      weights_chol = hlra_mgn_default_chol(series),
                      debug = FALSE, compensated = TRUE, additional_pars = list()) {
+    numeric_check(series)
 
     obj <- list()
 
@@ -161,6 +192,9 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
     return(signal_obj)
 }
 
@@ -181,6 +215,8 @@ hlra_mgn <- function(series, initial_glrr, weights = NULL,
 hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL,
                      alpha = 0.1, debug = FALSE, compensated = TRUE,
                      additional_pars = list()) {
+    numeric_check(polynoms)
+    whole_number_check(r, "r")
 
     obj <- list()
 
@@ -223,13 +259,13 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
         L <- max(poly_orders) + min(poly_orders)
         zero_trails <- L - sapply(polynoms, length)
 
-        input_for_cadzow <- sapply_ns(seq_along(polynoms), function(i)
+        input_for_cadzow <- lapply(seq_along(polynoms), function(i)
             c(numeric(zero_trails[i]), polynoms[[i]], numeric(zero_trails[i])))
         if (is.null(poly_weights)) {
             poly_weights <- rep(1, length(polynoms))
         }
 
-        input_for_weights <- sapply_ns(seq_along(polynoms), function(i)
+        input_for_weights <- lapply(seq_along(polynoms), function(i)
             c(numeric(zero_trails[i]), rep(poly_weights[i], length(polynoms[[i]])), numeric(zero_trails[i])))
 
         right_diag <- sapply(seq_along(polynoms),
@@ -251,10 +287,10 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
                                                     sylvester_nulling = zero_trails,
                                                     high_rank = TRUE)$signal
 
-        sylvmat <- do.call(cbind, sapply_ns(initial_sylvester_approx, function(x) traj_matrix(x, L)))
+        sylvmat <- do.call(cbind, lapply(initial_sylvester_approx, function(x) traj_matrix(x, L)))
         glrr_signals <- as.matrix(svd(sylvmat)$u[, (L-r+1):L], nrow = L)
 
-        glrr_signals_as_list <- sapply_ns(1:r, function(i) as.numeric(glrr_signals[, i]))
+        glrr_signals_as_list <- lapply(1:r, function(i) as.numeric(glrr_signals[, i]))
         initial_poly <- get_glrr_from_nonlrf_series(obj, glrr_signals_as_list, r)
 
         # print(initial_poly)
@@ -285,6 +321,9 @@ hlra_sylvester <- function(polynoms, r, initial_poly = NULL, poly_weights = NULL
     signal_obj["noise_norm"] <- NULL
     signal_obj$gcd <- signal_obj$gcd / sqrt(sum(signal_obj$gcd ^ 2))
 
+    signal_obj$approximation <- substitute_new_data(polynoms, signal_obj$approximation)
+    signal_obj$residual <- substitute_new_data(polynoms, signal_obj$residual)
+
     return(signal_obj)
 }
 
@@ -310,6 +349,9 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
                  alpha = 0.1, debug = FALSE,
                  envelope = unit_envelope(series),
                  compensated = TRUE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
 
     obj <- list()
 
@@ -373,6 +415,9 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 
     class(signal_obj) <- classes
 
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
     return(signal_obj)
 }
 
@@ -395,15 +440,18 @@ hlra <- function(series, r, L = default_L(series), ar_coefs = NULL,
 #' @examples
 #' library(Rssa)
 #' data("USUnemployment")
-#' series <- USUnemployment[, 2]
-#' series <- series[!is.na(series)]
+#' series <- log(USUnemployment[, 2])
 #' x <- hlra_ar(series, r = 9, p = 3, alpha = .8, initial_ar_coefs = c(.9))
-#' plot(x$signal, type = "l")
+#' plot(x$signal)
 hlra_ar <- function(series, r, p = 1, L = default_L(series),
                     alpha = 0.1, k = p * 4, ar_coefs_eps = 1e-7,
                     initial_ar_coefs = NULL, debug = FALSE,
                     envelope = unit_envelope(series),
                     compensated = TRUE, set_seed = NULL, additional_pars = list()) {
+    numeric_check(series)
+    whole_number_check(r, "r")
+    whole_number_check(L, "L")
+    whole_number_check(p, "p", 0)
 
     if (p == 0) {
         return(hlra(series, r, L, alpha, debug = debug,
@@ -495,7 +543,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
     }
 
     for (i in 1:k) {
-        if (debug) cat(sprintf("%d EM iteration\n", i))
+        if (debug == "P" || debug) cat(sprintf("%d EM iteration\n", i))
 
         signal_obj <- cadzow_with_mgn(obj, series, L, r, ar_coefs, right_diag, debug = debug,
                                      envelope = envelope, series_for_cadzow = series_for_cadzow,
@@ -514,7 +562,10 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
         }
     }
 
-    if (debug) print(ar_coefs_all)
+    if (debug == "P" || debug) {
+        cat(sprintf("AR coefficients evolution:\n"))
+        print(ar_coefs_all)
+    }
 
     if (!is.list(series)) {
         N <- length(as.numeric(signal_obj$signal))
@@ -529,6 +580,13 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
     classes <- c(classes, "hlra")
 
     class(signal_obj) <- classes
+
+    signal_obj$signal <- substitute_new_data(series, signal_obj$signal)
+    signal_obj$noise <- substitute_new_data(series, signal_obj$noise)
+
+    if (!is.null(names(series))) {
+        names(signal_obj$ar_coefs) <- names(series)
+    }
 
     return(signal_obj)
 }
@@ -550,8 +608,7 @@ hlra_ar <- function(series, r, p = 1, L = default_L(series),
 #' library(Rssa)
 #' data("USUnemployment")
 #' seedf <- function() set.seed(15)
-#' series <- USUnemployment[, 2]
-#' series <- series[!is.na(series)]
+#' series <- log(USUnemployment[, 2])
 #' bic_data <- hlra_tune(series, r_range = 8:12, p_range = 0:3, alpha = .8, initial_ar_coefs = c(.9), set_seed = seedf)
 #' plot.hlra_tune(bic_data)
 hlra_tune <- function(series, r_range = 1:15, p_range = 0:3,

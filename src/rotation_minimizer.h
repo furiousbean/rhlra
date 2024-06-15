@@ -1,117 +1,117 @@
 #ifndef ROTATION_MINIMIZER_H
 #define ROTATION_MINIMIZER_H
 
-#include <stdlib.h>
 #include <complex>
 #include <complex.h>
+#include <limits>
 #include <math.h>
-#include "chorner.h"
+#include <memory>
+#include <vector>
+#include <stdlib.h>
+
 #include <R.h>
 #include <Rinternals.h>
+
+#include "alloc.h"
+#include "chorner.h"
+
 
 const int USUAL_HORNER  = 0;
 const int COMPENSATED_HORNER  = 1;
 
 const double M_PHI = 0.618033988749894848204586834365638117720309179; //2/(1 + sqrt(5));
-const int SEARCH_INT = 5;
+const std::size_t SEARCH_INT = 5;
 
-template <typename Td, int horner_scheme> std::complex<Td> cpphorner(const std::complex<Td>* p, size_t n,
+template <typename Td, int horner_scheme> std::complex<Td> cpphorner(const std::complex<Td>* p, std::size_t n,
                            std::complex<Td> x) {
     std::complex<Td> sum(0);
-    for (int i = n-1; i >= 0; i--) {
+    for (long long i = n-1; i >= 0; i--) {
         sum = sum * x + p[i];
     }
     return sum;
 }
 
-template<> std::complex<double> cpphorner<double, COMPENSATED_HORNER>(const std::complex<double>* p, size_t n,
+template<> std::complex<double> cpphorner<double, COMPENSATED_HORNER>(const std::complex<double>* p, std::size_t n,
                            std::complex<double> x) {
-    _Complex double px;
-    ((double*)&px)[0] = x.real();
-    ((double*)&px)[1] = x.imag();
-    _Complex double result;
-    result = cchorner((const _Complex double *)p, n, px);
-    return std::complex<double>(((double*)&result)[0], ((double*)&result)[1]);
+    _Complex double result = cchorner(reinterpret_cast<const _Complex double *>(p),
+        n, reinterpret_cast<_Complex double&>(x));
+
+    return std::complex<double>(reinterpret_cast<std::complex<double>&>(result));
 }
 
-template <class Td = double> void fill_unitroots(std::complex<Td>* data, int N) {
-    int i;
-    Td cur_angle;
-
-    for (i = 0; i < N; i++) {
-        cur_angle = 2 * M_PI * i / N;
-        data[i].real(cos(cur_angle));
-        data[i].imag(sin(cur_angle));
+template <class Td = double> void fill_unitroots(std::complex<Td>* data, std::size_t N) {
+    for (std::size_t i = 0; i < N; i++) {
+        Td cur_angle = 2 * M_PI * i / N;
+        data[i] = { cos(cur_angle), sin(cur_angle) };
     }
 }
 
-template <class Td = double> void fill_fourier_matrix(std::complex<Td>* data, int N, int size, int begin,
-                                                      std::complex<Td>* unitroots) {
-    int i, j;
-    for (i = 0; i < size; i++) {
-        for (j = 0; j < N; j++) {
+template <class Td = double> void fill_fourier_matrix(std::complex<Td>* data, std::size_t N, std::size_t size,
+                                                      std::size_t begin, std::complex<Td>* unitroots) {
+    for (std::size_t i = 0; i < size; i++) {
+        for (std::size_t j = 0; j < N; j++) {
             data[i * N + j] = unitroots[((unsigned long long)(i + begin) * j) % N];
         }
     }
 }
 
-template <class Td = double> void rotate_vector(std::complex<Td>* input, int N, double alpha,
-                   std::complex<Td>* output) {
-    int i;
-    for (i = 0; i < N; i++) {
-        output[i] = input[i] * std::complex<Td>(cos(alpha * i), sin(alpha * i));
+template <class Td = double> void fill_rotation(std::complex<Td>* data, std::size_t N, double alpha) {
+    for (std::size_t i = 0; i < N; i++) {
+        data[i] = std::complex<Td>(cos(alpha * i), sin(alpha * i));
     }
 }
 
-template <int horner_scheme> int getSearchIt() {
+template <int horner_scheme> std::size_t getSearchIt() {
     return 15;
 }
 
-template <> int getSearchIt<COMPENSATED_HORNER>() {
+template <> std::size_t getSearchIt<COMPENSATED_HORNER>() {
     return 20;
 }
 
 template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
+    using TComplex = std::complex<Td>;
     private:
-        int N;
-        int r;
-        std::complex<Td>* glrr;
-        std::complex<Td>* unitroots;
-        int* active_indices;
-        int* active_indices_as_bool;
-        int aisz;
-        int SEARCH_IT;
+        std::size_t N;
+        std::size_t r;
+        std::shared_ptr<TComplex> glrr;
+        TComplex* unitroots;
+        std::vector<std::size_t> active_indices;
+        std::vector<bool> active_indices_as_bool;
+        std::size_t SEARCH_IT;
+
+        Td norm(TComplex x) {
+            return x.real() * x.real() + x.imag() * x.imag();
+        };
 
         Td conv_eval_alpha(Td alpha) {
-            std::complex<Td> sum(0);
-            int min_flag = 1;
+            TComplex sum(0);
+            bool min_flag = true;
             Td minimum(0);
             Td value;
-            int i;
 
-            std::complex<Td> cur_rot(cos(alpha), sin(alpha));
-            for (i = 0; i < aisz; i++) {
-                sum = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[active_indices[i]] * cur_rot);
-                value = (sum * conj(sum)).real();
+            TComplex cur_rot(cos(alpha), sin(alpha));
+            for (std::size_t i = 0; i < active_indices.size(); i++) {
+                sum = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[active_indices[i]] * cur_rot);
+                value = norm(sum);
                 if (min_flag || value < minimum) {
                     minimum = value;
-                    min_flag = 0;
+                    min_flag = false;
                 }
             }
 
-            // Rprintf("A %lf %lf %ld\n", alpha, -log(minimum), aisz);
+            // Rprintf("A %lf %lf %ld\n", alpha, -log(minimum), active_indices.size());
             return -minimum;
         }
 
         Td conv_min_alpha_int(Td li, Td ri) {
             Td lc, rc, lval, rval;
-            int i;
             lc = ri - (ri - li) * M_PHI;
             rc = li + (ri - li) * M_PHI;
             lval = conv_eval_alpha(lc);
             rval = conv_eval_alpha(rc);
             double answer = 0;
-            for (i = 0; i < SEARCH_IT; i++) {
+            for (std::size_t i = 0; i < SEARCH_IT; i++) {
                 if (lval < rval) {
                     ri = rc;
                     rc = lc;
@@ -136,9 +136,9 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
             Td lc = 0, rc, cur_value, cur_alpha;
             Td alpha = 0;
             rc = 2 * M_PI / N;
-            int min_flag = 1;
+            bool min_flag = true;
 
-            for (int i = 0; i < SEARCH_INT; i++) {
+            for (std::size_t i = 0; i < SEARCH_INT; i++) {
                 cur_alpha = conv_min_alpha_int(lc + i * (rc - lc) / SEARCH_INT,
                     lc + (i + 1) * (rc - lc) / SEARCH_INT);
 
@@ -149,93 +149,83 @@ template <class Td, int horner_scheme = USUAL_HORNER> class RotationMinimizer {
                 if (min_flag || cur_value < *minimum) {
                     *minimum = cur_value;
                     alpha = cur_alpha;
-                    min_flag = 0;
+                    min_flag = false;
                 }
             }
             return alpha;
         }
 
     public:
-        RotationMinimizer(int N, int r, Td* rglrr, std::complex<Td>* unitroots) : N(N),
-        r(r), unitroots(unitroots), aisz(0) {
-            glrr = new std::complex<Td>[r + 1];
-            for (int i = 0; i < r + 1; i++)
-                glrr[i] = rglrr[i];
-
-            active_indices = new int[N];
-            active_indices_as_bool = new int[N];
+        RotationMinimizer(std::size_t N, std::size_t r, Td* rglrr, std::complex<Td>* unitroots) : N(N),
+            r(r), glrr(new TComplex[r+1], OrdinaryArrayDeleter<TComplex>()),
+            unitroots(unitroots), active_indices_as_bool(N) {
+            for (std::size_t i = 0; i < r + 1; i++)
+                glrr.get()[i] = rglrr[i];
 
             SEARCH_IT = getSearchIt<horner_scheme>();
         }
 
-        ~RotationMinimizer() {
-            delete[] glrr;
-            delete[] active_indices;
-            delete[] active_indices_as_bool;
-        }
-
         void findMinimum(std::complex<Td>* A_f, Td& alpha) {
-            int i;
             Td minimum_part(0), cur_minimum(0), value;
 
             // alpha = M_PI / N;
             alpha = 0;
 
-            int new_idx = -1;
+            std::size_t new_idx = std::numeric_limits<std::size_t>::max();
 
             std::complex<Td> cur_rot(cos(alpha), sin(alpha));
-            for (i = 0; i < N; i++) {
-                active_indices[i] = 0;
-                active_indices_as_bool[i] = 0;
-                A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
-                value = (A_f[i] * conj(A_f[i])).real();
-                if (new_idx == -1 || value < cur_minimum) {
-                        new_idx = i;
-                        cur_minimum = value;
-                    }
+            for (std::size_t i = 0; i < N; i++) {
+                A_f[i] = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[i] * cur_rot);
+                value = norm(A_f[i]);
+                if (new_idx == std::numeric_limits<std::size_t>::max() || value < cur_minimum) {
+                    new_idx = i;
+                    cur_minimum = value;
+                }
             }
 
-            active_indices_as_bool[new_idx] = 1;
-            active_indices_as_bool[(new_idx + N - 1) % N] = 1;
-            // active_indices_as_bool[(new_idx + 1) % N] = 1;
+            active_indices.push_back((new_idx + N - 1) % N);
+            active_indices.push_back(new_idx);
+            // active_indices.push_back((new_idx + 1) % N);
 
-            active_indices[0] = new_idx;
-            active_indices[1] = (new_idx + N - 1) % N;
-            // active_indices[2] = (new_idx + 1) % N;
-            aisz = 2;
+            active_indices_as_bool[(new_idx + N - 1) % N] = true;
+            active_indices_as_bool[new_idx] = true;
+            // active_indices_as_bool[(new_idx + 1) % N] = true;
 
             do {
                 // Rprintf("B %d\n", aisz);
                 alpha = conv_min_alpha(&minimum_part);
                 minimum_part = -minimum_part;
 
-                cur_rot.real(cos(alpha));
-                cur_rot.imag(sin(alpha));
+                cur_rot = { cos(alpha), sin(alpha) };
 
-                int min_flag = 1;
+                bool min_flag = true;
 
-                for (i = 0; i < N; i++) {
-                    A_f[i] = cpphorner<Td, horner_scheme>(glrr, r + 1, unitroots[i] * cur_rot);
-                    value = (A_f[i] * conj(A_f[i])).real();
+                for (std::size_t i = 0; i < N; i++) {
+                    A_f[i] = cpphorner<Td, horner_scheme>(glrr.get(), r + 1, unitroots[i] * cur_rot);
+                    value = norm(A_f[i]);
                     if (min_flag || value < cur_minimum) {
                         new_idx = i;
                         cur_minimum = value;
-                        min_flag = 0;
+                        min_flag = false;
                     }
                 }
 
                 // Rprintf("minimum_part: %f, cur_minimum %f\n", minimum_part, cur_minimum);
                 if (minimum_part > cur_minimum) {
-                    active_indices_as_bool[new_idx] = 1;
-                    active_indices_as_bool[(new_idx + N - 1) % N] = 1;
-                    active_indices_as_bool[(new_idx + 1) % N] = 1;
-                    // Rprintf("OK try again\n");
-                    aisz = 0;
-                    for (i = 0; i < N; i++) {
-                        if (active_indices_as_bool[i]) {
-                            active_indices[aisz++] = i;
+                    bool added_index = false;
+                    std::size_t new_indices[2] = { (new_idx + N - 1) % N, new_idx };
+                    for (std::size_t i = 0; i < 2; i++) {
+                        if (!active_indices_as_bool[new_indices[i]]) {
+                            active_indices_as_bool[new_indices[i]] = true;
+                            active_indices.push_back(new_indices[i]);
+                            added_index = true;
                         }
                     }
+                    if (!added_index) {
+                        break;
+                    }
+                    // Rprintf("OK try again %ld\n", active_indices.size());
+                    // Rprintf("minimum_part: %.10e, cur_minimum %.10e, delta %.10e\n", minimum_part, cur_minimum, minimum_part - cur_minimum);
                 } else {
                     // Rprintf("DONE\n");
                     break;

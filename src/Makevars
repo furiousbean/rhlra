@@ -1,3 +1,3 @@
 PKG_LIBS += -lfftw3
-PKG_CPPFLAGS += -O3 -mfma -mavx
-PKG_CXXFLAGS += -std=c++11
+PKG_CPPFLAGS += -O3 -mfma
+PKG_CXXFLAGS += -std=c++14

@@ -1,184 +1,184 @@
 #ifndef CALCULATE_TANGENT_BASIS_H
 #define CALCULATE_TANGENT_BASIS_H
 
-#include <stdlib.h>
 #include <complex>
 #include <math.h>
+#include <memory>
+#include <stdlib.h>
+
 #include "calculate_basis.h"
+#include "alloc.h"
+
 
 template <class Td, int horner_scheme = USUAL_HORNER> class CalculateTangentBasis {
+    using TComplex = std::complex<Td>;
+    using DoubleComplex = std::complex<double>;
     private:
-        int N;
-        int r;
+        std::size_t N;
+        std::size_t r;
         Td* glrr;
-        std::complex<Td>* basis;
-        std::complex<Td>* basis_fourier;
-        std::complex<Td>* unitroots;
-        std::complex<Td>* A_f;
+        TComplex* basis;
+        std::shared_ptr<TComplex> basis_fourier;
+        std::shared_ptr<TComplex> unitroots;
+        std::shared_ptr<TComplex> A_f;
         Td alpha;
-        std::complex<Td>* qrinvmat;
+        std::shared_ptr<TComplex> qrinvmat;
 
-        void apply_qr_A2(std::complex<Td>* data, std::complex<Td>* vmat) {
-            std::complex<Td>* work;
-            std::complex<Td>* tau;
-            int* perm;
-            Td* rwork;
-            char Nchar = 'N';
-            char Uchar = 'U';
-            int i, j, info, worksz, sz2;
+        void apply_qr_A2(TComplex* data, TComplex* vmat) {
+            const char Nchar = 'N';
+            const char Uchar = 'U';
+            int info;
 
             int size = r;
 
-            sz2 = 2 * size;
-            worksz = (4 * sz2);
-            work = new std::complex<Td>[worksz];
-            tau = new std::complex<Td>[sz2];
-            perm = new int[sz2];
-            rwork = new Td[2 * sz2];
+            int sz2 = 2 * size;
+            int worksz = (4 * sz2);
+            int Ni = N;
+            std::shared_ptr<TComplex> work(new TComplex[worksz], OrdinaryArrayDeleter<TComplex>());
+            std::shared_ptr<TComplex> tau(new TComplex[sz2], OrdinaryArrayDeleter<TComplex>());
+            std::shared_ptr<int> perm(new int[sz2], OrdinaryArrayDeleter<int>());
+            std::shared_ptr<Td> rwork(new Td[2 * sz2], OrdinaryArrayDeleter<Td>());
 
-            F77_CALL(zgeqp3)(&N, &sz2, (Rcomplex*)data, &N,
-                     perm, (Rcomplex*)tau,
-                (Rcomplex*)work, &worksz, rwork, &info);
+            F77_CALL(zgeqp3)(&Ni, &sz2, (Rcomplex*)data, &Ni,
+                     perm.get(), (Rcomplex*)tau.get(),
+                (Rcomplex*)work.get(), &worksz, rwork.get(), &info);
 
-            F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
-                &N, &info);
-            memset(vmat, 0, sizeof(std::complex<Td>) * sz2 * sz2);
+            CheckLapackResult(info, "zgeqp3");
 
-            for (i = 0; i < size; i++) {
-                for (j = 0; j <= i; j++) {
-                    vmat[i*sz2 + (perm[j] - 1)] = data[i * N + j];
+            #ifdef SHORT_ZTRTRI_CALL
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &Ni, &info);
+            #else
+                F77_CALL(ztrtri)(&Uchar, &Nchar, &size, (Rcomplex*)data,
+                    &Ni, &info, 0, 0);
+            #endif
+
+            CheckLapackResult(info, "ztrtri");
+
+            for (std::size_t i = 0; i < sz2 * sz2; i++) {
+                vmat[i] = 0;
+            }
+
+            for (std::size_t i = 0; i < (std::size_t)size; i++) {
+                for (std::size_t j = 0; j <= i; j++) {
+                    vmat[i * sz2 + (perm.get()[j] - 1)] = data[i * N + j];
+                }
+            }
+        }
+
+        void arithm_addit_proj(TComplex* basis, std::size_t N, std::size_t size,
+                               TComplex* data, std::size_t p) {
+            TComplex sum;
+
+            std::shared_ptr<TComplex> coefs(new TComplex[size * p], OrdinaryArrayDeleter<TComplex>());
+            for (std::size_t i = 0; i < p; i++) {
+                for (std::size_t j = 0; j < size; j++) {
+                    sum = 0;
+                    for (std::size_t k = 0; k < N; k++) {
+                        sum += conj(basis[j * N + k]) * data[i * N + k];
+                    }
+                    coefs.get()[i * size + j] = sum;
                 }
             }
 
-            delete[] perm;
-            delete[] tau;
-            delete[] work;
-            delete[] rwork;
-        }
-
-        void arithm_addit_proj(std::complex<Td>* basis, int N, int size,
-                               std::complex<Td>* data, int p) {
-            std::complex<Td>* coefs;
-            std::complex<Td> sum;
-            int i, j, k;
-
-            coefs = new std::complex<Td>[size * p]; //calloc(size * p, sizeof(double _Complex));
-            for (i = 0; i < p; i++)
-                for (j = 0; j < size; j++) {
-                    sum = 0;
-                    for (k = 0; k < N; k++) {
-                        sum += conj(basis[j * N + k]) * data[i * N + k];
-                    }
-                    coefs[i * size + j] = sum;
-                }
-
-            for (i = 0; i < p; i++)
-                for (j = 0; j < size; j++) {
-                    for (k = 0; k < N; k++) {
-                        data[i * N + k] -= basis[j * N + k] * coefs[i * size + j];
+            for (std::size_t i = 0; i < p; i++) {
+                for (std::size_t j = 0; j < size; j++) {
+                    for (std::size_t k = 0; k < N; k++) {
+                        data[i * N + k] -= basis[j * N + k] * coefs.get()[i * size + j];
                     }
                 }
-
-            delete[] coefs;
+            }
         }
 
         void eval_z_a2_fourier() {
-            std::complex<Td>* preZ_a2;
-            std::complex<Td>* vmat;
-            std::complex<Td>* curpoly;
-            std::complex<Td>* qrdata;
-            int i, j;
+            std::shared_ptr<TComplex> preZ_a2(new TComplex[2 * r * N], OrdinaryArrayDeleter<TComplex>());
+            std::shared_ptr<TComplex> vmat(new TComplex[4 * r * r], OrdinaryArrayDeleter<TComplex>());
+            std::shared_ptr<TComplex> curpoly(new TComplex[2 * r + 1], OrdinaryArrayDeleter<TComplex>());
 
-            std::complex<Td>* Z_a = basis_fourier;
-            preZ_a2 = new std::complex<Td>[2 * r * N];
-            vmat = new std::complex<Td>[4 * r * r];
-            curpoly = new std::complex<Td>[2 * r + 1];
+            fill_fourier_matrix(preZ_a2.get(), N, 2 * r, 1, unitroots.get());
 
-            fill_fourier_matrix(preZ_a2, N, 2 * r, 1, unitroots);
+            TComplex* Z_a = basis_fourier.get();
+            TComplex* qrdata = Z_a;
 
-            qrdata = Z_a;
-
-            for (j = 0; j < 2 * r; j++)
-                for (i = 0; i < N; i++) {
-                    preZ_a2[i + j * N] /= (A_f[i] * A_f[i]);
+            for (std::size_t j = 0; j < 2 * r; j++) {
+                for (std::size_t i = 0; i < N; i++) {
+                    preZ_a2.get()[i + j * N] /= (A_f.get()[i] * A_f.get()[i]);
                 }
+            }
 
-            arithm_addit_proj(qrdata, N, r, preZ_a2, 2 * r);
+            arithm_addit_proj(qrdata, N, r, preZ_a2.get(), 2 * r);
 
-            apply_qr_A2(preZ_a2, vmat);
+            apply_qr_A2(preZ_a2.get(), vmat.get());
 
-            for (i = 0; i < r; i++) {
-                curpoly[0] = 0;
-                for (j = 0; j < 2 * r; j++)
-                    curpoly[j + 1] = vmat[2 * r * i + j];
+            for (std::size_t i = 0; i < r; i++) {
+                curpoly.get()[0] = 0;
+                for (std::size_t j = 0; j < 2 * r; j++)
+                    curpoly.get()[j + 1] = vmat.get()[2 * r * i + j];
 
-                for (j = 0; j < N; j++) {
+                for (std::size_t j = 0; j < N; j++) {
                     Z_a[(r + i) * N + j] =
-                    cpphorner<double, horner_scheme>(curpoly, 2 * r + 1, unitroots[j]) /
-                    (A_f[j] * A_f[j]);
+                    cpphorner<double, horner_scheme>(curpoly.get(), 2 * r + 1, unitroots.get()[j]) /
+                    (A_f.get()[j] * A_f.get()[j]);
                 }
             }
 
             arithm_addit_proj(qrdata, N, r, Z_a + N * r, r);
-
-            delete[] preZ_a2;
-            delete[] vmat;
-            delete[] curpoly;
         }
 
     public:
-        CalculateTangentBasis(int N, int r, Td* glrr, std::complex<Td>* basis):
-        N(N), r(r), glrr(glrr), basis(basis), alpha(0) {
-                basis_fourier = new std::complex<Td>[2 * N * r];
-                unitroots = new std::complex<Td>[N];
-                A_f = new std::complex<Td>[N];
-                qrinvmat = new std::complex<Td>[r * r];
-        }
-
-        ~CalculateTangentBasis() {
-            delete[] basis_fourier;
-            delete[] unitroots;
-            delete[] A_f;
-            delete[] qrinvmat;
+        CalculateTangentBasis(std::size_t N, std::size_t r, Td* glrr, std::complex<Td>* basis):
+            N(N), r(r), glrr(glrr), basis(basis),
+            basis_fourier(new TComplex[2 * N * r], OrdinaryArrayDeleter<TComplex>()),
+            unitroots(new TComplex[N], OrdinaryArrayDeleter<TComplex>()),
+            A_f(new TComplex[N], OrdinaryArrayDeleter<TComplex>()),
+            alpha(0),
+            qrinvmat(new TComplex[r * r], OrdinaryArrayDeleter<TComplex>()) {
         }
 
         void doWork() {
             double alpha;
-            double sqrtN;
-            fftw_complex *in, *out;
-            fftw_plan my_plan;
-            int i, j;
 
             CalculateBasis<Td, horner_scheme, ORTHOGONALIZATION> cb(N, r, glrr,
-                    basis, basis_fourier, unitroots, A_f, &alpha, qrinvmat);
+                    basis, basis_fourier.get(), unitroots.get(), A_f.get(), &alpha,
+                    qrinvmat.get());
             cb.doWork();
 
             eval_z_a2_fourier();
 
-            in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            my_plan = fftw_plan_dft_1d(N, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+            std::shared_ptr<DoubleComplex> in_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> out_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            sqrtN = std::sqrt(N);
-            for (i = r; i < 2 * r; i++) {
-                for (j = 0; j < N; j++) {
-                    in[j][0] = basis_fourier[i * N + j].real();
-                    in[j][1] = basis_fourier[i * N + j].imag();
+            DoubleComplex* in = in_fftw.get();
+            DoubleComplex* out = out_fftw.get();
+
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(in),
+                reinterpret_cast<fftw_complex*>(out),
+                FFTW_BACKWARD, FFTW_ESTIMATE);
+
+            double sqrtN = std::sqrt(N);
+            for (std::size_t i = r; i < 2 * r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
+                    in[j] = basis_fourier.get()[i * N + j];
                 }
 
                 fftw_execute(my_plan);
-                for (j = 0; j < N; j++) {
-                    basis[i * N + j].real(out[j][0] / sqrtN);
-                    basis[i * N + j].imag(out[j][1] / sqrtN);
+                for (std::size_t j = 0; j < N; j++) {
+                    basis[i * N + j] = out[j] / sqrtN;
+                }
+            }
+
+            DoubleComplex* rotation = out;
+            fill_rotation(rotation, N, alpha);
+            for (std::size_t i = 0; i < 2 * r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
+                    basis[i * N + j] *= rotation[j];
                 }
             }
 
             fftw_destroy_plan(my_plan);
-            fftw_free(in);
-            fftw_free(out);
-            for (i = r; i < 2 * r; i++) {
-                rotate_vector(basis + i * N, N, alpha, basis + i * N);
-            }
         }
 };
 

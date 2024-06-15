@@ -1,2 +1,2 @@
 # rhlra
-Hankel Low-Rank Approximation for R package
+R-package for Hankel Low-Rank Approximation

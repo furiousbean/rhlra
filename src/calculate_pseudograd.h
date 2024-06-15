@@ -1,131 +1,141 @@
 #ifndef CALCULATE_PSEUDOGRAD_H
 #define CALCULATE_PSEUDOGRAD_H
 
-#include <stdlib.h>
 #include <complex>
+#include <memory>
 #include <math.h>
+#include <vector>
+#include <stdlib.h>
+
 #include "rotation_minimizer.h"
+#include "alloc.h"
 
 
 template <class Td> class CalculatePseudograd {
+    using TComplex = std::complex<Td>;
+    using DoubleComplex = std::complex<double>;
     private:
-        int N;
-        int r;
-        int K;
+        std::size_t N;
+        std::size_t r;
+        std::size_t K;
         Td* glrr;
-        std::complex<Td>* A_f;
+        TComplex* A_f;
         Td& alpha;
-        int tau;
+        std::size_t tau;
         Td* signal;
-        std::complex<Td>* pseudograd;
-        std::complex<Td>* pseudograd_fourier;
+        TComplex* pseudograd;
+        std::shared_ptr<TComplex> pseudograd_fourier;
 
         void eval_pseudograd_fourier() {
-            int i, j;
+            std::shared_ptr<DoubleComplex> initial_f_vec_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> current_grad_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            fftw_complex* initial_f_vec = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*N);
-            fftw_complex* initial_f_vec_fourier = (fftw_complex*)fftw_malloc(sizeof(fftw_complex)*N);
-            fftw_plan my_plan = fftw_plan_dft_1d(N, initial_f_vec, initial_f_vec_fourier, FFTW_FORWARD, FFTW_ESTIMATE);
-            for (i = 0; i < K; i++) {
-                std::complex<Td> curval = -signal[i] * std::complex<Td>(cos(-i * alpha), sin(-i * alpha));
-                initial_f_vec[i][0] = curval.real();
-                initial_f_vec[i][1] = curval.imag();
+            DoubleComplex* initial_f_vec = initial_f_vec_fftw.get();
+            DoubleComplex* current_grad = current_grad_fftw.get();
+
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(initial_f_vec),
+                reinterpret_cast<fftw_complex*>(current_grad),
+                FFTW_FORWARD, FFTW_ESTIMATE);
+            for (std::size_t i = 0; i < K; i++) {
+                initial_f_vec[i] = -signal[i] * TComplex(cos(-alpha * i), sin(-alpha * i));
             }
 
-            for (i = K; i < N; i++) {
-                initial_f_vec[i][0] = 0;
-                initial_f_vec[i][1] = 0;
+            for (std::size_t i = K; i < N; i++) {
+                initial_f_vec[i] = 0;
             }
 
             fftw_execute(my_plan);
             fftw_destroy_plan(my_plan);
 
-            std::complex<Td>* current_grad = new std::complex<Td>[N];
-            for (i = 0; i < N; i++) {
-                current_grad[i].real(initial_f_vec_fourier[i][0]);
-                current_grad[i].imag(initial_f_vec_fourier[i][1]);
-            }
-
-            int cur_pnt = 0;
+            std::size_t cur_pnt = 0;
 
             if (tau != 0) {
-                for (i = 0; i < N; i++) {
-                    pseudograd_fourier[i] = current_grad[i];
+                for (std::size_t i = 0; i < N; i++) {
+                    pseudograd_fourier.get()[i] = current_grad[i];
                 }
                 cur_pnt = 1;
             }
 
-            for (j = 1; j < r + 1; j++) {
-                for (i = 0; i < N; i++) {
-                    current_grad[i] = (current_grad[i] + signal[j - 1]) *
-                        std::complex<Td>(cos(alpha + 2 * M_PI * i / N),
-                        sin(alpha + 2 * M_PI * i / N)) -
-                        signal[j + K - 1] * std::complex<Td>(
-                            cos(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N),
-                            sin(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N));
+            std::vector<TComplex> back_rotation(N);
+            std::vector<TComplex> front_rotation(N);
+
+            for (std::size_t i = 0; i < N; i++) {
+                back_rotation[i] = TComplex(
+                    cos(alpha + 2 * M_PI * i / N), sin(alpha + 2 * M_PI * i / N));
+                front_rotation[i] = TComplex(
+                    cos(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N),
+                    sin(-alpha * (K - 1) - ((unsigned long long)i * (K - 1)) % N * 2 * M_PI / N));
+            }
+
+            for (std::size_t j = 1; j < r + 1; j++) {
+                for (std::size_t i = 0; i < N; i++) {
+                    current_grad[i] = (current_grad[i] + signal[j - 1]) * back_rotation[i]
+                         - signal[j + K - 1] * front_rotation[i];
                 }
                 if (tau != j) {
-                    for (i = 0; i < N; i++) {
-                        pseudograd_fourier[i + cur_pnt * N] = current_grad[i];
+                    for (std::size_t i = 0; i < N; i++) {
+                        pseudograd_fourier.get()[i + cur_pnt * N] = current_grad[i];
                     }
                     cur_pnt += 1;
                 }
             }
 
-            for (j = 0; j < r; j++)
-                for (i = 0; i < N; i++) {
-                    pseudograd_fourier[i + j * N] /= A_f[i];
+            for (std::size_t j = 0; j < r; j++) {
+                for (std::size_t i = 0; i < N; i++) {
+                    pseudograd_fourier.get()[i + j * N] /= A_f[i];
                 }
-
-
-            fftw_free(initial_f_vec);
-            fftw_free(initial_f_vec_fourier);
+            }
         }
 
     public:
-        CalculatePseudograd(int N, int r, Td* glrr,
-            std::complex<Td>* A_f, Td* alpha,
-            int tau, Td* signal, std::complex<Td>* pseudograd): N(N), r(r),
+        CalculatePseudograd(std::size_t N, std::size_t r, Td* glrr,
+            TComplex* A_f, Td* alpha,
+            std::size_t tau, Td* signal, TComplex* pseudograd): N(N), r(r),
             K(N-r), glrr(glrr), A_f(A_f), alpha(*alpha), tau(tau),
-            signal(signal), pseudograd(pseudograd) {
-                pseudograd_fourier = new std::complex<Td>[N * r];
+            signal(signal), pseudograd(pseudograd), pseudograd_fourier(
+                new TComplex[N * r], OrdinaryArrayDeleter<TComplex>()) {
         }
 
         void doWork() {
-            fftw_complex *in, *out;
-            fftw_plan my_plan;
-            int i, j;
-
             eval_pseudograd_fourier();
 
-            in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex)*N);
-            my_plan = fftw_plan_dft_1d(N, in, out, FFTW_BACKWARD, FFTW_ESTIMATE);
+            std::shared_ptr<DoubleComplex> in_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
+            std::shared_ptr<DoubleComplex> out_fftw(FftwArrayAllocator<DoubleComplex>(N),
+                FftwArrayDeleter<DoubleComplex>());
 
-            for (i = 0; i < r; i++) {
-                for (j = 0; j < N; j++) {
-                    in[j][0] = pseudograd_fourier[i * N + j].real();
-                    in[j][1] = pseudograd_fourier[i * N + j].imag();
+            DoubleComplex* in = in_fftw.get();
+            DoubleComplex* out = out_fftw.get();
+
+            fftw_plan my_plan = fftw_plan_dft_1d(N,
+                reinterpret_cast<fftw_complex*>(in),
+                reinterpret_cast<fftw_complex*>(out),
+                FFTW_BACKWARD, FFTW_ESTIMATE);
+
+            for (std::size_t i = 0; i < r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
+                    in[j] = pseudograd_fourier.get()[i * N + j];
                 }
 
                 fftw_execute(my_plan);
-                for (j = 0; j < N; j++) {
-                    pseudograd[i * N + j].real(out[j][0] / N);
-                    pseudograd[i * N + j].imag(out[j][1] / N);
+                for (std::size_t j = 0; j < N; j++) {
+                    pseudograd[i * N + j] = out[j] / (double)N;
                 }
 
             }
 
-            fftw_destroy_plan(my_plan);
-            fftw_free(in);
-            fftw_free(out);
-            for (i = 0; i < r; i++) {
-                rotate_vector(pseudograd + i * N, N, alpha, pseudograd + i * N);
+            DoubleComplex* rotation = out;
+            fill_rotation(rotation, N, alpha);
+            for (std::size_t i = 0; i < r; i++) {
+                for (std::size_t j = 0; j < N; j++) {
+                    pseudograd[i * N + j] *= rotation[j];
+                }
             }
-        }
 
-        ~CalculatePseudograd() {
-            delete[] pseudograd_fourier;
+            fftw_destroy_plan(my_plan);
         }
 };
 

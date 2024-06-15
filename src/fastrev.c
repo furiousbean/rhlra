@@ -2,7 +2,7 @@
 #include <Rinternals.h>
 
 SEXP glue_series_lists(SEXP vexp) {
-    int size, i, j, pnt;
+    size_t size, i, j, pnt;
     double* v;
     double* x;
     SEXP xexp;
